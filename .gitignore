@@ -112,3 +112,6 @@ venv.bak/
 *.iml
 out
 gen
+
+# Adational
+temp.txt
