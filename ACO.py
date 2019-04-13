@@ -1,35 +1,13 @@
 import abc
 import numpy as np
+from services.calculate import nearest_neighbors_vrptw
 
 
-class ACOStrategy(object):
-    __metaclass__ = abc.ABCMeta
+class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems With Time Windows
 
-    def __init__(self, vrptw):
+    def __init__(self, vrptw, m, alpha, beta, tau0): #jeśli tau0 , m - liczba mrówek
+
         self.vrptw = vrptw
-
-    @abc.abstractmethod
-    def initialize_pheromones(self):
-        pass
-
-    @abc.abstractmethod
-    def construct_ant_solution(self):
-        pass
-
-    @abc.abstractmethod
-    def daemon_actions(self):  # optional
-        pass
-
-    @abc.abstractmethod
-    def global_update_pheromones(self):
-        pass
-
-
-class MACS_VRPTW(ACOStrategy): #Multiple Ant Colony System for Vehicle Routing Problems With Time Windows
-
-    def __init__(self, vrptw, tau0, m, alpha, beta): #tau0 - początkowa wartość feromonu, m - liczba mrówek
-        super().__init__(vrptw)
-
         self.tau0 = tau0
         self.m = m
         self.alpha = alpha
@@ -37,7 +15,15 @@ class MACS_VRPTW(ACOStrategy): #Multiple Ant Colony System for Vehicle Routing P
         self.pheromones = [] # 2 wymiarowa tablica zawierająca informacje o feromonie z i na j
         self.shortest_path = []
 
-        #TODO NN Heuristic
+        self.nn_init_solution = nearest_neighbors_vrptw(self.vrptw)
+
+        self.shortest_path = self.nn_init_solution["routes"]
+
+        if self.tau0 is None:
+            self.tau0 = 1/(vrptw.size * self.nn_init_solution["length"])
+
+        print(self.tau0)
+
 
     def initialize_pheromones(self):
 
@@ -53,4 +39,7 @@ class MACS_VRPTW(ACOStrategy): #Multiple Ant Colony System for Vehicle Routing P
         pass
 
     def global_update_pheromones(self):
+        pass
+
+    def new_active_ant(self,k, local_search, IN):
         pass

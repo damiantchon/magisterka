@@ -6,9 +6,21 @@ from services.calculate import manhattan_distance, euclidean_distance
 
 class VRPTW:
 
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, data, vehicle_capacity):
 
+        # From data
+        self.ids_data = data.ids_data
+        self.size = data.size
+        self.ids = data.ids
+        self.coordinates = data.coordinates
+        self.demands = data.demands
+        self.time_windows = data.time_windows
+        self.service_times = data.service_times
+
+        # Capacity
+        self.vehicle_capacity = vehicle_capacity
+
+        #Calculated
         self.distances = self.create_distance_matrix()
 
         self.graph = nx.Graph()
@@ -22,33 +34,33 @@ class VRPTW:
 
     def create_distance_matrix(self):
 
-        zeros = np.zeros((self.data.size, self.data.size))
+        zeros = np.zeros((self.size, self.size))
 
-        for i in range(0, self.data.size):
-            for j in range(i+1, self.data.size):
+        for i in range(0, self.size):
+            for j in range(i+1, self.size):
 
-                zeros[i][j] = euclidean_distance(self.data.coordinates[i], self.data.coordinates[j])
+                zeros[i][j] = euclidean_distance(self.coordinates[i], self.coordinates[j])
                 zeros[j][i] = zeros[i][j]
 
         return zeros
 
     def get_clients_ids(self):
-        return self.data.ids[1:]
+        return self.ids[1:]
 
     def get_depo_ids(self):
-        return [self.data.ids[0]]
+        return [self.ids[0]]
 
-    def duplicate_depo(self):  # Zakładając, że depo jest pierwszym rekordem w danych wejściowych.
-
-        self.data.size = self.data.size + 1
-
-        max_client_id = max(self.data.ids) + 1
-
-        self.data.ids.append(max_client_id)
-        self.data.coordinates.append(self.data.coordinates[0])
-        self.data.demands.append(self.data.demands[0])
-        self.data.time_windows.append(self.data.time_windows[0])
-        self.data.service_times.append(self.data.service_times[0])
+    # def duplicate_depo(self):  # Zakładając, że depo jest pierwszym rekordem w danych wejściowych.
+    #
+    #     self.size = self.size + 1
+    #
+    #     max_client_id = max(self.ids) + 1
+    #
+    #     self.ids.append(max_client_id)
+    #     self.coordinates.append(self.coordinates[0])
+    #     self.demands.append(self.demands[0])
+    #     self.time_windows.append(self.time_windows[0])
+    #     self.service_times.append(self.service_times[0])
 
 
 class Data:
@@ -86,7 +98,8 @@ class Data:
                 fin.readline()
 
                 for line in fin:
-                    fout.write(re.sub(r'\s+', ' ', line).strip() + "\n")
+                    if not line.strip().startswith("#"):
+                        fout.write(re.sub(r'\s+', ' ', line).strip() + "\n")
 
             return_me = []
 
@@ -103,7 +116,7 @@ class Data:
 
             self.size = len(raw_data)
 
-            self.ids_data.append(int(raw_data[i][0]))
+            self.ids_data.append(raw_data[i][0])
 
             self.ids.append(i)
 
