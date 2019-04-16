@@ -82,11 +82,11 @@ def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojdÄ
                 # Sytuacja normalna - dojeÅ¼dzamy w oknie czasowym
                 time = time + closest_fesible["length"] + vrptw.service_times[current_city]
 
-            print("Current City:", current_city)
-            print("To visit:", to_visit)
-            print("Route length:", route_length)
-            print("Fesible", fesible)
-            print("")
+            # print("Current City:", current_city)
+            # print("To visit:", to_visit)
+            # print("Route length:", route_length)
+            # print("Fesible", fesible)
+            # print("")
 
         total_lenght += route_length
 
@@ -251,6 +251,7 @@ def local_search(vrptw, first_route, second_route, total, better):
 
 def local_search_clean(vrptw, solution):
 
+
     def swap_edges(route1, route2, X1pi, X2pi, Y1pi, Y2pi):
 
         temp_r1 = []
@@ -294,7 +295,6 @@ def local_search_clean(vrptw, solution):
                             temp_first, temp_second = swap_edges(first_route, second_route, X1_index + 1, X2_index + 1,
                                                                  Y1_index + 1, Y2_index + 1)
 
-
                         swaperooni_len = routes_length(vrptw, [temp_first, temp_second])
 
                         if swaperooni_len < best_X2:
@@ -303,7 +303,7 @@ def local_search_clean(vrptw, solution):
                         dlugosci_Y2.append(routes_length(vrptw, [temp_first, temp_second]))
 
                         if len(dlugosci_Y2) == 3:
-                            if dlugosci_Y2[2] > dlugosci_Y2[1] > dlugosci_Y2[0]:
+                            if dlugosci_Y2[2] > dlugosci_Y2[1] > dlugosci_Y2[0]: # or (dlugosci_Y2[2] > best_len and dlugosci_Y2[1] > best_len and dlugosci_Y2[0] > best_len):
 
                                 dlugosci_Y2.clear()
                                 break
@@ -325,7 +325,7 @@ def local_search_clean(vrptw, solution):
                 dlugosci_X2.append(best_X2)
 
                 if len(dlugosci_X2) == 3:
-                    if dlugosci_X2[2] > dlugosci_X2[1] > dlugosci_X2[0]:
+                    if dlugosci_X2[2] > dlugosci_X2[1] > dlugosci_X2[0]: # or (dlugosci_X2[2] > best_len and dlugosci_X2[1] > best_len and dlugosci_X2[0] > best_len):
 
                         dlugosci_X2.clear()
                         break

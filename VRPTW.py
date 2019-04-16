@@ -62,6 +62,75 @@ class VRPTW:
     #     self.time_windows.append(self.time_windows[0])
     #     self.service_times.append(self.service_times[0])
 
+class VRPTW_MACS_DS:
+    def __init__(self, vrptw, v):
+
+        self.v = v
+
+        self.ids_data_legacy = vrptw.ids_data.copy()
+        self.size = vrptw.size + (v-1)
+        self.vehicle_capacity = vrptw.vehicle_capacity
+
+
+        self.ids = []
+
+        # Creating ids
+        for i in range(0, self.size):
+            self.ids.append(i)
+
+
+        self.coordinates = vrptw.coordinates.copy()
+        self.demands = vrptw.demands.copy()
+        self.time_windows = vrptw.time_windows.copy()
+        self.service_times = vrptw.service_times.copy()
+
+
+
+
+        for i in range(vrptw.size, self.size):
+            self.coordinates.append(self.coordinates[0])
+            self.demands.append(self.demands[0])
+            self.time_windows.append(self.time_windows[0])
+            self.service_times.append(self.service_times[0])
+
+        self.distances = vrptw.distances.copy()
+
+
+        # Adding distances
+        if v > 1:
+
+            new_array_1 = []
+
+            for i in range(0, vrptw.size):
+                array = np.full(v-1, self.distances[i][0])
+                new_array_1 = np.append(arr=new_array_1, values=array)
+
+            new_array_1 = new_array_1.reshape((vrptw.size, v-1))
+            self.distances = np.hstack((self.distances, new_array_1))
+
+            new_array_2 = []
+
+            for i in range(0, v-1):
+                array = vrptw.distances[0]
+                array2 = np.zeros(v-1)
+
+                new_array_2 = np.concatenate((new_array_2, array, array2))
+
+            new_array_2 = new_array_2.reshape((v-1, self.size))
+
+            self.distances = np.vstack((self.distances, new_array_2))
+
+        # Distances added
+
+        self.graph = nx.Graph()
+
+        for i in range(0, self.size):
+            self.graph.add_node(self.ids[i],
+                                coordinates=self.coordinates[i],
+                                demands=self.demands[i],
+                                time_windows=self.time_windows[i],
+                                service_times=self.service_times[i])
+
 
 class Data:
 
