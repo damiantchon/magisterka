@@ -1,4 +1,5 @@
 import numpy as np
+
 from scipy.spatial import distance
 
 
@@ -215,12 +216,12 @@ def local_search(vrptw, first_route, second_route, total, better):
                     if swaperooni_len < best_len:
                         if check_fisibility(vrptw, [temp_first, temp_second]):
                             better += 1
-                            print("Indexes: X1:", X1_index, "Y1:", Y1_index, "X2:", X2_index, "Y2:", Y2_index)
-                            print(swaperooni_len, "<", best_len)
-                            print(first_route)
-                            print(temp_first)
-                            print(second_route)
-                            print(temp_second)
+                            # print("Indexes: X1:", X1_index, "Y1:", Y1_index, "X2:", X2_index, "Y2:", Y2_index)
+                            # print(swaperooni_len, "<", best_len)
+                            # print(first_route)
+                            # print(temp_first)
+                            # print(second_route)
+                            # print(temp_second)
 
                             best_len = swaperooni_len
 
@@ -231,7 +232,7 @@ def local_search(vrptw, first_route, second_route, total, better):
 
             if len(dlugosci_X2) == 3:
                 if dlugosci_X2[2] > dlugosci_X2[1] > dlugosci_X2[0]:
-                    print(dlugosci_X2)
+                    # print(dlugosci_X2)
                     dlugosci_X2.clear()
                     break
                 else:
@@ -240,12 +241,122 @@ def local_search(vrptw, first_route, second_route, total, better):
     first_route = first_best
     second_route = second_best
 
-    print("Test:", test)
-    print("Test set:", test_set)
+    # print("Test:", test)
+    # print("Test set:", test_set)
 
 
 
     return total, better, first_best, second_best
+
+
+def local_search_clean(vrptw, solution):
+
+    def swap_edges(route1, route2, X1pi, X2pi, Y1pi, Y2pi):
+
+        temp_r1 = []
+        temp_r2 = []
+
+        temp_r1 += route1[:X1pi]
+        temp_r1 += route2[X2pi:Y2pi]
+        temp_r1 += route1[Y1pi:]
+
+        temp_r2 += route2[:X2pi]
+        temp_r2 += route1[X1pi:Y1pi]
+        temp_r2 += route2[Y2pi:]
+
+        return temp_r1, temp_r2
+
+    def local_search_single(first_route, second_route):
+
+        first_best = first_route
+        second_best = second_route
+
+        global best_len
+        best_len = routes_length(vrptw, [first_route, second_route])
+
+        for X1_index, X1 in enumerate(first_route[:-1]):
+            dlugosci_X2 = []
+            for X2_index, X2 in enumerate(second_route[:-1]):
+                best_X2 = 999999999999
+                for Y1_index, Y1 in enumerate(first_route[X1_index:-1], X1_index):
+                    dlugosci_Y2 = []
+                    for Y2_index, Y2 in enumerate(second_route[X2_index:-1], X2_index):
+
+                        #  swaperooni:
+                        if X1_index == Y1_index and X2_index == Y2_index:
+
+                            temp = first_route[:X1_index + 1] + second_route[Y2_index + 1:]
+                            temp_second = second_route[:X2_index + 1] + first_route[Y1_index + 1:]
+                            temp_first = temp
+
+                        else:
+
+                            temp_first, temp_second = swap_edges(first_route, second_route, X1_index + 1, X2_index + 1,
+                                                                 Y1_index + 1, Y2_index + 1)
+
+
+                        swaperooni_len = routes_length(vrptw, [temp_first, temp_second])
+
+                        if swaperooni_len < best_X2:
+                            best_X2 = swaperooni_len
+
+                        dlugosci_Y2.append(routes_length(vrptw, [temp_first, temp_second]))
+
+                        if len(dlugosci_Y2) == 3:
+                            if dlugosci_Y2[2] > dlugosci_Y2[1] > dlugosci_Y2[0]:
+
+                                dlugosci_Y2.clear()
+                                break
+                            else:
+                                dlugosci_Y2.pop(0)
+
+                        if check_fisibility(vrptw, [temp_first]) is False:
+                            break
+
+                        if swaperooni_len < best_len:
+                            if check_fisibility(vrptw, [temp_first, temp_second]):
+
+                                best_len = swaperooni_len
+
+                                first_best = temp_first
+
+                                second_best = temp_second
+
+                dlugosci_X2.append(best_X2)
+
+                if len(dlugosci_X2) == 3:
+                    if dlugosci_X2[2] > dlugosci_X2[1] > dlugosci_X2[0]:
+
+                        dlugosci_X2.clear()
+                        break
+                    else:
+                        dlugosci_X2.pop(0)
+
+        return first_best, second_best
+
+    def update_solution(solution_to_update):
+
+        updated_solution = {"length": 0,
+                            "vehicles": 0,
+                            "routes": list(filter(([0, 0]).__ne__, solution_to_update["routes"]))}
+
+        updated_solution["length"] = routes_length(vrptw, solution_to_update["routes"])
+        updated_solution["vehicles"] = len(updated_solution["routes"])
+
+        return updated_solution
+
+    # main loop
+    for i in range(0, len(solution["routes"])-1):
+        for j in range(i+1, len(solution["routes"])):
+            # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
+            if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
+                solution["routes"][i], solution["routes"][j] = \
+                    local_search_single(solution["routes"][i], solution["routes"][j])
+
+    # aktualizacja rozwiązania
+
+    return update_solution(solution)
+
 
 
 

@@ -1,6 +1,6 @@
 import abc
 import numpy as np
-from services.calculate import nearest_neighbors_vrptw
+from services.calculate import nearest_neighbors_vrptw, local_search_clean
 
 
 class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems With Time Windows
@@ -15,31 +15,28 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
         self.pheromones = [] # 2 wymiarowa tablica zawierająca informacje o feromonie z i na j
         self.shortest_path = []
 
-        self.nn_init_solution = nearest_neighbors_vrptw(self.vrptw)
+        self.best_solution = {}
 
-        self.shortest_path = self.nn_init_solution["routes"]
+        #
+        # if self.tau0 is None:
+        #     self.tau0 = 1/(vrptw.size * self.nn_init_solution["length"])
 
-        if self.tau0 is None:
-            self.tau0 = 1/(vrptw.size * self.nn_init_solution["length"])
+        # print(self.tau0)
 
-        print(self.tau0)
+    def run(self):
+        self.best_solution = nearest_neighbors_vrptw(self.vrptw)
+        self.best_solution = local_search_clean(self.vrptw, self.best_solution)
+        # main loop
+
+        #todo WARUNKI WYJŚCIA
+        while True:
+            break
 
 
-    def initialize_pheromones(self):
 
-        # setup pheromones
-        n = self.vrptw.data.size
-        self.pheromones = np.full((n, n), self.tau0)
-
-    def construct_ant_solution(self):
+    def ACS_VEI(self, v):
         pass
 
-    def daemon_actions(self):
-
+    def ACS_TIME(self, v):
         pass
 
-    def global_update_pheromones(self):
-        pass
-
-    def new_active_ant(self,k, local_search, IN):
-        pass
