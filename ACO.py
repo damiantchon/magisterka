@@ -38,7 +38,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         v = self.best_solution["vehicles"]
 
-        return self.ACS_TIME(v)
+        return self.ACS_TIME(v+1)
 
         # # todo WARUNKI WYJŚCIA
         # while True:
@@ -274,8 +274,25 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         if local_search and feasible:
             print("BEFORE", solution)
+            last_solution_length = solution["length"]
+
             solution = local_search_clean(macs_ds, solution)
-            print("AFTER", solution)
+
+            while (last_solution_length > solution["length"]):
+                last_solution_length = solution["length"]
+                solution = local_search_clean(macs_ds, solution)
+            # print("AFTER 1LS", solution)
+            #
+            # print("AFTER 2LS", solution)
+            # solution = local_search_clean(macs_ds, solution)
+            # print("AFTER 3LS", solution)
+            # solution = local_search_clean(macs_ds, solution)
+            # print("AFTER 4LS", solution)
+            # solution = local_search_clean(macs_ds, solution)
+            # print("AFTER 5LS", solution)
+            # solution = local_search_clean(macs_ds, solution)
+            # print("AFTER 6LS", solution)
+
 
         return solution
 

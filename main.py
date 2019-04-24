@@ -57,7 +57,6 @@ if __name__ == '__main__':
 
 
     nn_solution = macs.run()
-    print(nn_solution)
 
     add_solution_to_graph(vrptw.graph, nn_solution)
 

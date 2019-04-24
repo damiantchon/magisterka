@@ -95,7 +95,7 @@ def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojd�
     return solution
 
 
-def check_fisibility(vrptw, routes): #TODO zoptymalizować
+def check_feasibility(vrptw, routes): #TODO zoptymalizować
 
     for route in routes:
 
@@ -116,6 +116,68 @@ def check_fisibility(vrptw, routes): #TODO zoptymalizować
     return True
 
 
+def check_feasibility_prime(vrptw, route, Xi_Xpi, d_table): # Zoptymalizowana versja "check_feasibility
+
+    if (Xi_Xpi[0] >= 0):
+        time = d_table[route[Xi_Xpi[0]]][route[Xi_Xpi[1]]][0]
+        load = d_table[route[Xi_Xpi[0]]][route[Xi_Xpi[1]]][1]
+    else:
+        time = 0
+        load = 0
+
+    for i in range(Xi_Xpi[1], len(route)-1):
+        if time + vrptw.distances[route[i]][route[i + 1]] > vrptw.time_windows[route[i + 1]][1]:
+            return False
+        else:
+            time = max(time + vrptw.distances[route[i]][route[i + 1]] + vrptw.service_times[route[i + 1]],
+                       vrptw.time_windows[route[i + 1]][0] + vrptw.service_times[route[i + 1]])
+            load = load + vrptw.demands[route[i + 1]]
+
+    if load > vrptw.vehicle_capacity:
+        return False
+
+    return True
+
+
+def create_departure_table(vrptw, routes):
+    table = []
+
+    for i in range(0, vrptw.size):
+        new = []
+        for j in range(0, vrptw.size):
+            new.append(None)
+        table.append(new)
+
+    for route in routes:
+        time = 0
+        load = 0
+        for i in range(0, len(route)-1):
+            start = route[i]
+            stop = route[i+1]
+
+            time = max(time + vrptw.distances[start][stop], vrptw.time_windows[stop][0]) + vrptw.service_times[stop]
+            load = load + vrptw.demands[stop]
+            table[start][stop] = (time, load)
+
+    return table
+
+
+def update_departure_table(vrptw, routes, t):
+
+    for route in routes:
+        time = 0
+        load = 0
+        for i in range(0, len(route)-1):
+            start = route[i]
+            stop = route[i+1]
+
+            time = max(time + vrptw.distances[start][stop], vrptw.time_windows[stop][0]) + vrptw.service_times[stop]
+            load = load + vrptw.demands[stop]
+            t[start][stop] = (time, load)
+
+    return t
+
+
 def routes_length(vrptw, routes):
     length = 0
     for route in routes:
@@ -125,30 +187,29 @@ def routes_length(vrptw, routes):
     return int(length*(10**2))/(10.**2)
 
 
+
 def local_search_clean(vrptw, solution):
 
-    def calculate_delta(X1pi, X2pi, Y1pi, Y2pi, r1, r2):
+    def calculate_delta(X1i, X2i, Y1i, Y2i, r1, r2):
         delta = 0
 
         dist = vrptw.distances
 
-        if X1pi == Y1pi and X2pi == Y2pi:
-            delta = dist[r1[X1pi]][r2[X2pi+1]] + dist[r2[X2pi]][r1[X1pi+1]] - \
-                    (dist[r1[X1pi]][r1[X1pi+1]] + dist[r2[X2pi]][r2[X2pi+1]])
+        if X1i == Y1i and X2i == Y2i:
+            delta = dist[r1[X1i]][r2[X2i + 1]] + dist[r2[X2i]][r1[X1i + 1]] - \
+                    (dist[r1[X1i]][r1[X1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
 
-        elif X1pi != Y1pi and X2pi != Y2pi:
-            # print(dist[r1[X1pi]][r2[X2pi + 1]] + dist[r2[Y2pi]][r1[Y1pi + 1]] + dist[r2[X2pi]][r1[X1pi + 1]] + dist[r1[Y1pi]][r2[Y2pi + 1]])
-            # print(dist[r1[X1pi]][r1[X1pi + 1]] + dist[r1[Y1pi]][r1[Y1pi + 1]] + dist[r2[X2pi]][r2[X2pi + 1]] + dist[r2[Y2pi]][r2[Y2pi + 1]])
-            delta = dist[r1[X1pi]][r2[X2pi + 1]] + dist[r2[Y2pi]][r1[Y1pi + 1]] + dist[r2[X2pi]][r1[X1pi + 1]] + dist[r1[Y1pi]][r2[Y2pi + 1]] - \
-                    (dist[r1[X1pi]][r1[X1pi + 1]] + dist[r1[Y1pi]][r1[Y1pi + 1]] + dist[r2[X2pi]][r2[X2pi + 1]] + dist[r2[Y2pi]][r2[Y2pi + 1]])
+        elif X1i != Y1i and X2i != Y2i:
+            delta = dist[r1[X1i]][r2[X2i + 1]] + dist[r2[Y2i]][r1[Y1i + 1]] + dist[r2[X2i]][r1[X1i + 1]] + dist[r1[Y1i]][r2[Y2i + 1]] - \
+                    (dist[r1[X1i]][r1[X1i + 1]] + dist[r1[Y1i]][r1[Y1i + 1]] + dist[r2[X2i]][r2[X2i + 1]] + dist[r2[Y2i]][r2[Y2i + 1]])
 
-        elif X1pi == Y1pi and X2pi != Y2pi:
-            delta = dist[r2[X2pi]][r2[Y2pi+1]] + dist[r1[X1pi]][r2[X2pi+1]] + dist[r2[Y2pi]][r1[Y1pi+1]] - \
-                    (dist[r2[X2pi]][r2[X2pi+1]] + dist[r2[Y2pi]][r2[Y2pi+1]] + dist[r1[X1pi]][r1[X1pi+1]])
+        elif X1i == Y1i and X2i != Y2i:
+            delta = dist[r2[X2i]][r2[Y2i + 1]] + dist[r1[X1i]][r2[X2i + 1]] + dist[r2[Y2i]][r1[Y1i + 1]] - \
+                    (dist[r2[X2i]][r2[X2i + 1]] + dist[r2[Y2i]][r2[Y2i + 1]] + dist[r1[X1i]][r1[X1i + 1]])
 
-        elif X1pi != Y1pi and X2pi == Y2pi:
-            delta = dist[r1[X1pi]][r1[Y1pi+1]] + dist[r2[X2pi]][r1[X1pi+1]] + dist[r1[Y1pi]][r2[Y2pi+1]] - \
-                (dist[r1[X1pi]][r1[X1pi+1]] + dist[r1[Y1pi]][r1[Y1pi+1]] + dist[r2[X2pi]][r2[X2pi+1]])
+        elif X1i != Y1i and X2i == Y2i:
+            delta = dist[r1[X1i]][r1[Y1i + 1]] + dist[r2[X2i]][r1[X1i + 1]] + dist[r1[Y1i]][r2[Y2i + 1]] - \
+                    (dist[r1[X1i]][r1[X1i + 1]] + dist[r1[Y1i]][r1[Y1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
 
         return delta
 
@@ -167,7 +228,8 @@ def local_search_clean(vrptw, solution):
 
         return temp_r1, temp_r2
 
-    def local_search_single(first_route, second_route):
+    def local_search_single(first_route, second_route, d_table):
+
 
         first_best = first_route
         second_best = second_route
@@ -196,14 +258,13 @@ def local_search_clean(vrptw, solution):
                             temp_first, temp_second = swap_edges(first_route, second_route, X1_index + 1, X2_index + 1,
                                                                  Y1_index + 1, Y2_index + 1)
 
-                        if check_fisibility(vrptw, [temp_first]) is False:
+                        # if check_fisibility(vrptw, [temp_first]) is False:
+                        #     break
+
+                        if check_feasibility_prime(vrptw, temp_first, (X1_index - 1, X1_index), d_table) is False:
                             break
 
                         swaperooni_len = calculate_delta(X1_index,X2_index,Y1_index,Y2_index,r1=first_route,r2=second_route) #routes_length(vrptw, [temp_first, temp_second])
-                        # print("X1:", X1_index,"X2:",X2_index,"X3:",Y1_index,"X4:",Y2_index)
-                        # print(calculate_delta(X1_index,X2_index,Y1_index,Y2_index,r1=first_route,r2=second_route))
-                        # print(first_route, temp_first)
-                        # print(second_route, temp_second)
 
                         if swaperooni_len < best_X2:
                             best_X2 = swaperooni_len
@@ -219,13 +280,16 @@ def local_search_clean(vrptw, solution):
                                 dlugosci_Y2.pop(0)
 
                         if swaperooni_len < best_len:
-                            if check_fisibility(vrptw, [temp_second]):
+                            # if check_fisibility(vrptw, [temp_second]):
+                            if check_feasibility_prime(vrptw, temp_second, (X2_index - 1, X2_index), d_table):
 
                                 best_len = swaperooni_len
 
                                 first_best = temp_first
 
                                 second_best = temp_second
+
+                                d_table = update_departure_table(vrptw, [first_best, second_best], d_table)
 
                 dlugosci_X2.append(best_X2)
 
@@ -250,16 +314,18 @@ def local_search_clean(vrptw, solution):
 
         return updated_solution
 
+    departure_table = create_departure_table(vrptw, solution["routes"])
+
     # main loop
     for i in range(0, len(solution["routes"])-1):
         for j in range(i+1, len(solution["routes"])):
             # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
             if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
                 solution["routes"][i], solution["routes"][j] = \
-                    local_search_single(solution["routes"][i], solution["routes"][j])
+                    local_search_single(solution["routes"][i], solution["routes"][j], departure_table)
 
     # aktualizacja rozwiązania
-
+    print(update_solution(solution))
     return update_solution(solution)
 
 
