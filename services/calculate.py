@@ -95,7 +95,7 @@ def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojdÄ
     return solution
 
 
-def check_fisibility(vrptw, routes):
+def check_fisibility(vrptw, routes): #TODO zoptymalizowaÄ‡
 
     for route in routes:
 
@@ -122,132 +122,35 @@ def routes_length(vrptw, routes):
         for i in range(0, len(route)-1):
             length += vrptw.distances[route[i]][route[i+1]]
 
-    return int(length*(10**2))/(10.**2) # round(length, 2)
+    return int(length*(10**2))/(10.**2)
 
-
-
-
-
-# def local_search(vrptw, first_route, second_route, total, better):
-#     i = 0
-#
-#     def swap_edges(route1, route2, X1pi, X2pi, Y1pi, Y2pi):
-#
-#         temp_r1 = []
-#         temp_r2 = []
-#
-#         temp_r1 += route1[:X1pi]
-#         temp_r1 += route2[X2pi:Y2pi]
-#         temp_r1 += route1[Y1pi:]
-#
-#         temp_r2 += route2[:X2pi]
-#         temp_r2 += route1[X1pi:Y1pi]
-#         temp_r2 += route2[Y2pi:]
-#
-#         return temp_r1, temp_r2
-#
-#     test = []
-#     test_set = []
-#
-#     temp_first = []
-#     temp_second = []
-#
-#     first_best = first_route
-#     second_best = second_route
-#
-#     oryg_len = routes_length(vrptw, [first_route, second_route])
-#     global best_len
-#     best_len = routes_length(vrptw, [first_route, second_route])
-#
-#
-#     for X1_index, X1 in enumerate(first_route[:-1]):
-#         dlugosci_X2 = []
-#         for X2_index, X2 in enumerate(second_route[:-1]):
-#             best_X2 = 99999999
-#             for Y1_index, Y1 in enumerate(first_route[X1_index:-1], X1_index):
-#                 dlugosci_Y2 = []
-#                 for Y2_index, Y2 in enumerate(second_route[X2_index:-1], X2_index):
-#
-#                     i += 1
-#
-#                     #  swaperooni:
-#                     if X1_index == Y1_index and X2_index == Y2_index:
-#
-#                         temp = first_route[:X1_index+1] + second_route[Y2_index+1:]
-#                         temp_second = second_route[:X2_index+1] + first_route[Y1_index+1:]
-#                         temp_first = temp
-#
-#                         test.append(len(temp_first) + len(temp_second))
-#                         test_set.append(len(set(temp_first)) + len(set(temp_second)))
-#
-#                     else:
-#
-#                         temp_first, temp_second = swap_edges(first_route, second_route, X1_index+1, X2_index+1, Y1_index+1, Y2_index+1)
-#
-#                         test.append(len(temp_first) + len(temp_second))
-#                         test_set.append(len(set(temp_first)) + len(set(temp_second)))
-#
-#                     swaperooni_len = routes_length(vrptw, [temp_first, temp_second])
-#
-#                     if swaperooni_len < best_X2:
-#                         best_X2 = swaperooni_len
-#
-#
-#                     dlugosci_Y2.append(routes_length(vrptw, [temp_first, temp_second]))
-#
-#                     if len(dlugosci_Y2) == 3:
-#                         if dlugosci_Y2[2] > dlugosci_Y2[1] > dlugosci_Y2[0]:
-#
-#                             dlugosci_Y2.clear()
-#                             break
-#                         else:
-#                             dlugosci_Y2.pop(0)
-#
-#
-#                     if check_fisibility(vrptw, [temp_first]) is False:
-#                         break
-#
-#
-#
-#                     total += 1
-#                     if swaperooni_len < best_len:
-#                         if check_fisibility(vrptw, [temp_first, temp_second]):
-#                             better += 1
-#                             # print("Indexes: X1:", X1_index, "Y1:", Y1_index, "X2:", X2_index, "Y2:", Y2_index)
-#                             # print(swaperooni_len, "<", best_len)
-#                             # print(first_route)
-#                             # print(temp_first)
-#                             # print(second_route)
-#                             # print(temp_second)
-#
-#                             best_len = swaperooni_len
-#
-#                             first_best = temp_first
-#                             second_best = temp_second
-#
-#             dlugosci_X2.append(best_X2)
-#
-#             if len(dlugosci_X2) == 3:
-#                 if dlugosci_X2[2] > dlugosci_X2[1] > dlugosci_X2[0]:
-#                     # print(dlugosci_X2)
-#                     dlugosci_X2.clear()
-#                     break
-#                 else:
-#                     dlugosci_X2.pop(0)
-#
-#     first_route = first_best
-#     second_route = second_best
-#
-#     # print("Test:", test)
-#     # print("Test set:", test_set)
-#
-#
-#
-#     return total, better, first_best, second_best
-#
 
 def local_search_clean(vrptw, solution):
 
+    def calculate_delta(X1pi, X2pi, Y1pi, Y2pi, r1, r2):
+        delta = 0
+
+        dist = vrptw.distances
+
+        if X1pi == Y1pi and X2pi == Y2pi:
+            delta = dist[r1[X1pi]][r2[X2pi+1]] + dist[r2[X2pi]][r1[X1pi+1]] - \
+                    (dist[r1[X1pi]][r1[X1pi+1]] + dist[r2[X2pi]][r2[X2pi+1]])
+
+        elif X1pi != Y1pi and X2pi != Y2pi:
+            # print(dist[r1[X1pi]][r2[X2pi + 1]] + dist[r2[Y2pi]][r1[Y1pi + 1]] + dist[r2[X2pi]][r1[X1pi + 1]] + dist[r1[Y1pi]][r2[Y2pi + 1]])
+            # print(dist[r1[X1pi]][r1[X1pi + 1]] + dist[r1[Y1pi]][r1[Y1pi + 1]] + dist[r2[X2pi]][r2[X2pi + 1]] + dist[r2[Y2pi]][r2[Y2pi + 1]])
+            delta = dist[r1[X1pi]][r2[X2pi + 1]] + dist[r2[Y2pi]][r1[Y1pi + 1]] + dist[r2[X2pi]][r1[X1pi + 1]] + dist[r1[Y1pi]][r2[Y2pi + 1]] - \
+                    (dist[r1[X1pi]][r1[X1pi + 1]] + dist[r1[Y1pi]][r1[Y1pi + 1]] + dist[r2[X2pi]][r2[X2pi + 1]] + dist[r2[Y2pi]][r2[Y2pi + 1]])
+
+        elif X1pi == Y1pi and X2pi != Y2pi:
+            delta = dist[r2[X2pi]][r2[Y2pi+1]] + dist[r1[X1pi]][r2[X2pi+1]] + dist[r2[Y2pi]][r1[Y1pi+1]] - \
+                    (dist[r2[X2pi]][r2[X2pi+1]] + dist[r2[Y2pi]][r2[Y2pi+1]] + dist[r1[X1pi]][r1[X1pi+1]])
+
+        elif X1pi != Y1pi and X2pi == Y2pi:
+            delta = dist[r1[X1pi]][r1[Y1pi+1]] + dist[r2[X2pi]][r1[X1pi+1]] + dist[r1[Y1pi]][r2[Y2pi+1]] - \
+                (dist[r1[X1pi]][r1[X1pi+1]] + dist[r1[Y1pi]][r1[Y1pi+1]] + dist[r2[X2pi]][r2[X2pi+1]])
+
+        return delta
 
     def swap_edges(route1, route2, X1pi, X2pi, Y1pi, Y2pi):
 
@@ -270,7 +173,7 @@ def local_search_clean(vrptw, solution):
         second_best = second_route
 
         global best_len
-        best_len = routes_length(vrptw, [first_route, second_route])
+        best_len = 0 #routes_length(vrptw, [first_route, second_route])
 
         for X1_index, X1 in enumerate(first_route[:-1]):
             dlugosci_X2 = []
@@ -280,7 +183,8 @@ def local_search_clean(vrptw, solution):
                     dlugosci_Y2 = []
                     for Y2_index, Y2 in enumerate(second_route[X2_index:-1], X2_index):
 
-                        #  swaperooni:
+                        # swaperooni
+
                         if X1_index == Y1_index and X2_index == Y2_index:
 
                             temp = first_route[:X1_index + 1] + second_route[Y2_index + 1:]
@@ -292,7 +196,14 @@ def local_search_clean(vrptw, solution):
                             temp_first, temp_second = swap_edges(first_route, second_route, X1_index + 1, X2_index + 1,
                                                                  Y1_index + 1, Y2_index + 1)
 
-                        swaperooni_len = routes_length(vrptw, [temp_first, temp_second])
+                        if check_fisibility(vrptw, [temp_first]) is False:
+                            break
+
+                        swaperooni_len = calculate_delta(X1_index,X2_index,Y1_index,Y2_index,r1=first_route,r2=second_route) #routes_length(vrptw, [temp_first, temp_second])
+                        # print("X1:", X1_index,"X2:",X2_index,"X3:",Y1_index,"X4:",Y2_index)
+                        # print(calculate_delta(X1_index,X2_index,Y1_index,Y2_index,r1=first_route,r2=second_route))
+                        # print(first_route, temp_first)
+                        # print(second_route, temp_second)
 
                         if swaperooni_len < best_X2:
                             best_X2 = swaperooni_len
@@ -306,9 +217,6 @@ def local_search_clean(vrptw, solution):
                                 break
                             else:
                                 dlugosci_Y2.pop(0)
-
-                        if check_fisibility(vrptw, [temp_first]) is False:
-                            break
 
                         if swaperooni_len < best_len:
                             if check_fisibility(vrptw, [temp_second]):

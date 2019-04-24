@@ -26,14 +26,10 @@ def add_solution_to_graph(graph, solution):
     return graph
 
 
-
-
-
 if __name__ == '__main__':
 
-    # data = Data("solomon/C101_25")
-    data = Data("solomon/C201_100")
-
+    # data = Data("solomon/local_search_test")
+    data = Data("solomon/C101_100")
 
     vrptw = VRPTW(data, vehicle_capacity=200)
 
@@ -43,35 +39,31 @@ if __name__ == '__main__':
 
     # print(time_windows)
 
-    macs = MACS_VRPTW(vrptw, tau0=None, m=20, alpha=0.5, beta=1, q0=0.5, p=0.1)
+    macs = MACS_VRPTW(vrptw, tau0=None, m=20, alpha=0.5, beta=1, q0=0.7, p=0.1)
 
     print(macs.vrptw.distances)
 
-    # nn_solution = nearest_neighbors_vrptw(vrptw)
 
-    cProfile.run('macs.run()')
+    # cProfile.run('macs.run()')
     # macs.run()
 
+    # nn_solution = nearest_neighbors_vrptw(vrptw)
     # nn_solution["routes"] = [[0, 1, 6, 3, 4, 0], [0, 5, 2, 7, 8, 0]]
     # nn_solution["length"] = routes_length(vrptw, nn_solution["routes"])
     #
     # print("Doin local search:")
     # first_solution = copy.deepcopy(nn_solution)
-    # nn_solution = local_search_clean(vrptw, nn_solution)
-    # print(first_solution)
-    # print(nn_solution)
-    #
-    # add_solution_to_graph(vrptw.graph, nn_solution)
-    #
-    # nx.draw_networkx(vrptw.graph, pos=pos, nodelist=vrptw.get_depo_ids(), with_labels=True, node_color='r',
-    #                  node_size=300, font_color='k', font_size=8, labels=time_windows)
-    # nx.draw_networkx(vrptw.graph, pos=pos, nodelist=vrptw.get_clients_ids(), with_labels=True, node_color='k',
-    #                  node_size=200, font_color='r', font_size=8)
-    #
-    # plt.show()
-    #
-    # macs = MACS_VRPTW(vrptw, 1, 1, 1, None)
 
 
 
+    nn_solution = macs.run()
+    print(nn_solution)
 
+    add_solution_to_graph(vrptw.graph, nn_solution)
+
+    nx.draw_networkx(vrptw.graph, pos=pos, nodelist=vrptw.get_depo_ids(), with_labels=True, node_color='r',
+                     node_size=300, font_color='k', font_size=8, labels=time_windows)
+    nx.draw_networkx(vrptw.graph, pos=pos, nodelist=vrptw.get_clients_ids(), with_labels=True, node_color='k',
+                     node_size=200, font_color='r', font_size=8)
+
+    plt.show()

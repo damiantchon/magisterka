@@ -38,7 +38,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         v = self.best_solution["vehicles"]
 
-        self.ACS_TIME(v+1)
+        return self.ACS_TIME(v)
 
         # # todo WARUNKI WYJŚCIA
         # while True:
@@ -277,6 +277,9 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             solution = local_search_clean(macs_ds, solution)
             print("AFTER", solution)
 
+        return solution
+
+
 
     def ACS_VEI(self, v):
 
@@ -295,7 +298,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         self.pheromones_TIME = self.initialize_pheromones(macs_ds.size)
 
-        self.new_active_ant(k=1, local_search=True, IN=0, macs_ds=macs_ds, pheromones=self.pheromones_TIME)
+        return self.new_active_ant(k=1, local_search=True, IN=0, macs_ds=macs_ds, pheromones=self.pheromones_TIME)
 
         # for k in self.m:
         #     self.new_active_ant(k=k, local_search=True, IN=0, macs_ds=macs_ds, pheromones=self.pheromones_TIME)
