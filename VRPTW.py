@@ -1,7 +1,9 @@
 import re
 import networkx as nx
 import numpy as np
-from services.calculate import manhattan_distance, euclidean_distance
+
+from random import choice
+from services.calculate import euclidean_distance
 
 
 class VRPTW:
@@ -20,7 +22,7 @@ class VRPTW:
         # Capacity
         self.vehicle_capacity = vehicle_capacity
 
-        #Calculated
+        # Calculated
         self.distances = self.create_distance_matrix()
 
         self.graph = nx.Graph()
@@ -62,6 +64,7 @@ class VRPTW:
     #     self.time_windows.append(self.time_windows[0])
     #     self.service_times.append(self.service_times[0])
 
+
 class VRPTW_MACS_DS:
     def __init__(self, vrptw, v):
 
@@ -71,21 +74,23 @@ class VRPTW_MACS_DS:
         self.size = vrptw.size + (v-1)
         self.vehicle_capacity = vrptw.vehicle_capacity
 
-
         self.ids = []
 
         # Creating ids
         for i in range(0, self.size):
             self.ids.append(i)
 
+        self.depo_ids = [0]
+
+        for i in range(vrptw.size, self.size):
+            self.depo_ids.append(i)
+
+        print(self.depo_ids)
 
         self.coordinates = vrptw.coordinates.copy()
         self.demands = vrptw.demands.copy()
         self.time_windows = vrptw.time_windows.copy()
         self.service_times = vrptw.service_times.copy()
-
-
-
 
         for i in range(vrptw.size, self.size):
             self.coordinates.append(self.coordinates[0])
@@ -122,6 +127,8 @@ class VRPTW_MACS_DS:
 
         # Distances added
 
+        print(self.distances)
+
         self.graph = nx.Graph()
 
         for i in range(0, self.size):
@@ -130,6 +137,9 @@ class VRPTW_MACS_DS:
                                 demands=self.demands[i],
                                 time_windows=self.time_windows[i],
                                 service_times=self.service_times[i])
+
+    def get_random_depo(self):
+        return choice(self.depo_ids)
 
 
 class Data:
@@ -212,7 +222,3 @@ class Data:
 
         else:
             return None
-
-
-
-

@@ -1,11 +1,12 @@
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import cProfile
 import pandas as pd
 from itertools import chain
 import copy
 
-from services.calculate import nearest_neighbors_vrptw, local_search, local_search_clean, routes_length
+from services.calculate import nearest_neighbors_vrptw, local_search_clean, routes_length
 from VRPTW import Data, VRPTW, VRPTW_MACS_DS
 from ACO import MACS_VRPTW
 
@@ -30,7 +31,9 @@ def add_solution_to_graph(graph, solution):
 
 if __name__ == '__main__':
 
-    data = Data("solomon/local_search_test")
+    # data = Data("solomon/C101_25")
+    data = Data("solomon/C201_100")
+
 
     vrptw = VRPTW(data, vehicle_capacity=200)
 
@@ -40,19 +43,18 @@ if __name__ == '__main__':
 
     # print(time_windows)
 
-    macs = MACS_VRPTW(vrptw, tau0=None, m=20, alpha=0.5, beta=0.5)
+    macs = MACS_VRPTW(vrptw, tau0=None, m=20, alpha=0.5, beta=1, q0=0.5, p=0.1)
 
     print(macs.vrptw.distances)
 
-    nn_solution = nearest_neighbors_vrptw(vrptw)
+    # nn_solution = nearest_neighbors_vrptw(vrptw)
 
-    vrptw_macs_ds = VRPTW_MACS_DS(vrptw, 5)
+    cProfile.run('macs.run()')
+    # macs.run()
 
     # nn_solution["routes"] = [[0, 1, 6, 3, 4, 0], [0, 5, 2, 7, 8, 0]]
     # nn_solution["length"] = routes_length(vrptw, nn_solution["routes"])
-
-
-
+    #
     # print("Doin local search:")
     # first_solution = copy.deepcopy(nn_solution)
     # nn_solution = local_search_clean(vrptw, nn_solution)
@@ -67,7 +69,7 @@ if __name__ == '__main__':
     #                  node_size=200, font_color='r', font_size=8)
     #
     # plt.show()
-
+    #
     # macs = MACS_VRPTW(vrptw, 1, 1, 1, None)
 
 
