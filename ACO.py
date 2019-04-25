@@ -63,10 +63,10 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             temp_cities_to_visit = cities_to_visit.copy()
             if with_depos == False:
                 temp_cities_to_visit = list(set(temp_cities_to_visit) - set(macs_ds.depo_ids))
-            print("WITH DEPOS", with_depos)
-            print("CURRENT LOCATION", current_location)
-            print("CURRENT TIME", current_time)
-            print("TEMP CITIES TO VISIT", temp_cities_to_visit)
+            # print("WITH DEPOS", with_depos)
+            # print("CURRENT LOCATION", current_location)
+            # print("CURRENT TIME", current_time)
+            # print("TEMP CITIES TO VISIT", temp_cities_to_visit)
             for city in temp_cities_to_visit:
                 if current_time + macs_ds.distances[current_location][city] <= macs_ds.time_windows[city][1] \
                     and max(current_time + macs_ds.distances[current_location][city], macs_ds.time_windows[city][0]) + \
@@ -74,7 +74,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                     and load + macs_ds.demands[city] <= macs_ds.vehicle_capacity:
 
                     fesible.append(city)
-            print("FESIBLE CITIES", fesible)
+            # print("FESIBLE CITIES", fesible)
             return fesible
 
         def get_next_location(pheromones):
@@ -179,27 +179,27 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             nv_w_demands = sorted(nv_w_demands, key=lambda x: x[1], reverse=True)
 
 
-            print(tours_with_demands)
+            # print(tours_with_demands)
 
             for city_w_demand in nv_w_demands:
-                print("CITY WITH DEMAND", city_w_demand)
+                # print("CITY WITH DEMAND", city_w_demand)
                 posible_inserts = [] #  list of tuples (tour_id, insertion_point, distance)
 
                 for tour_id, t in enumerate(tours_with_demands):
-
+                    # TODO ROZKMINIĆ BUG "826" - coś nie tak pilnowaniem Load
                     if t[1] + city_w_demand[1] <= macs_ds.vehicle_capacity: # check if demand did not exceed vehicle_capacity
                         route = t[0].copy()
-                        print("ROUTE", route)
+                        # print("ROUTE", route)
                         for n, city in enumerate(t[0][1:], 1):
                             route.insert(n, city_w_demand[0])
-                            print("THEORETICAL ROUTE", route, is_fesible(route))
+                            # print("THEORETICAL ROUTE", route, is_fesible(route))
                             if is_fesible(route):
                                 posible_inserts.append((tour_id, n, route_length(route)))
                             route.remove(city_w_demand[0])
-                print("POSSIBLE_INSERTS", posible_inserts)
+                # print("POSSIBLE_INSERTS", posible_inserts)
                 if posible_inserts:
                     best = min(posible_inserts, key=lambda x: x[2])
-                    print("BEST", best)
+                    # print("BEST", best)
                     tours_with_demands[best[0]][0].insert(best[1], city_w_demand[0])
                     cities_to_visit.remove(city_w_demand[0])
 
@@ -236,7 +236,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 else:
                     distance = max(1, distance)
 
-                print("DISTANCE of city",city,":", distance, "(", delta_time ,"*", (macs_ds.time_windows[city][1] - current_time),")")
+                # print("DISTANCE of city",city,":", distance, "(", delta_time ,"*", (macs_ds.time_windows[city][1] - current_time),")")
 
                 attractiveness[current_location][city] = 1.0/distance
 
@@ -247,7 +247,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             load = load + macs_ds.demands[next_location]
 
             cities_to_visit.remove(next_location)
-            print("Next location:", next_location)
+            # print("Next location:", next_location)
             if next_location in macs_ds.depo_ids:
                 current_time = 0
                 load = 0
@@ -281,18 +281,6 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             while (last_solution_length > solution["length"]):
                 last_solution_length = solution["length"]
                 solution = local_search_clean(macs_ds, solution)
-            # print("AFTER 1LS", solution)
-            #
-            # print("AFTER 2LS", solution)
-            # solution = local_search_clean(macs_ds, solution)
-            # print("AFTER 3LS", solution)
-            # solution = local_search_clean(macs_ds, solution)
-            # print("AFTER 4LS", solution)
-            # solution = local_search_clean(macs_ds, solution)
-            # print("AFTER 5LS", solution)
-            # solution = local_search_clean(macs_ds, solution)
-            # print("AFTER 6LS", solution)
-
 
         return solution
 

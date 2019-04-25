@@ -127,7 +127,7 @@ class VRPTW_MACS_DS:
 
         # Distances added
 
-        print(self.distances)
+        # print(self.distances)
 
         self.graph = nx.Graph()
 

@@ -8,7 +8,7 @@ def manhattan_distance(x, y):
 
 
 def euclidean_distance(x, y):
-    return round(distance.euclidean(x, y), 2)
+    return distance.euclidean(x, y)  #round(distance.euclidean(x, y), 2)
 
 
 def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojdę
@@ -33,7 +33,7 @@ def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojd�
 
         vehicles_count = vehicles_count + 1
 
-        current_capacity = vrptw.vehicle_capacity
+        load = 0
 
         route_length = 0
 
@@ -54,7 +54,7 @@ def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojd�
                 distance = vrptw.distances[current_city][city]
                 if time + distance <= vrptw.time_windows[city][1] \
                         and max(time + distance, vrptw.time_windows[city][0]) + vrptw.service_times[city] + vrptw.distances[city][depo] <= vrptw.time_windows[depo][1]\
-                        and current_capacity - vrptw.demands[city] >= 0:
+                        and load + vrptw.demands[city] <= vrptw.vehicle_capacity:
                     # dojadę przed końcem okna czasowego i po obsłudze zdążę wrócić do depo
 
                     fesible.append((city, distance))
@@ -73,16 +73,10 @@ def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojd�
 
             # Przesuwamy pojazd do następnego miasta i ustalamy czas po obsłudze
             current_city = closest_fesible["city"]
-            current_capacity -= vrptw.demands[closest_fesible["city"]]
+            load = load + vrptw.demands[closest_fesible["city"]]
 
-            if time + closest_fesible["length"] < vrptw.time_windows[current_city][0]:
-                # Sytuacja z czekaniem na obsługę (przyjechaliśmy za wcześnie
-                time = vrptw.time_windows[current_city][0] + vrptw.service_times[current_city]
-            else:
-                # Sytuacja normalna - dojeżdzamy w oknie czasowym
-                time = time + closest_fesible["length"] + vrptw.service_times[current_city]
-
-            #
+            time = max(vrptw.time_windows[current_city][0] + vrptw.service_times[current_city],
+                       time + closest_fesible["length"] + vrptw.service_times[current_city])
 
         total_lenght += route_length
 
@@ -119,8 +113,8 @@ def check_feasibility(vrptw, routes): #TODO zoptymalizować
 def check_feasibility_prime(vrptw, route, Xi_Xpi, d_table): # Zoptymalizowana versja "check_feasibility
 
     if (Xi_Xpi[0] >= 0):
-        time = d_table[route[Xi_Xpi[0]]][route[Xi_Xpi[1]]][0]
-        load = d_table[route[Xi_Xpi[0]]][route[Xi_Xpi[1]]][1]
+        time = d_table.get(str(route[Xi_Xpi[0]]) + "_" + str(route[Xi_Xpi[1]]))[0]
+        load = d_table.get(str(route[Xi_Xpi[0]]) + "_" + str(route[Xi_Xpi[1]]))[1]
     else:
         time = 0
         load = 0
@@ -132,21 +126,15 @@ def check_feasibility_prime(vrptw, route, Xi_Xpi, d_table): # Zoptymalizowana ve
             time = max(time + vrptw.distances[route[i]][route[i + 1]] + vrptw.service_times[route[i + 1]],
                        vrptw.time_windows[route[i + 1]][0] + vrptw.service_times[route[i + 1]])
             load = load + vrptw.demands[route[i + 1]]
-
+    # print("LOAD:", load," (ROUTE", route, ")")
     if load > vrptw.vehicle_capacity:
         return False
 
     return True
 
 
-def create_departure_table(vrptw, routes):
-    table = []
-
-    for i in range(0, vrptw.size):
-        new = []
-        for j in range(0, vrptw.size):
-            new.append(None)
-        table.append(new)
+def create_departure_dict(vrptw, routes):
+    table = {}
 
     for route in routes:
         time = 0
@@ -157,7 +145,7 @@ def create_departure_table(vrptw, routes):
 
             time = max(time + vrptw.distances[start][stop], vrptw.time_windows[stop][0]) + vrptw.service_times[stop]
             load = load + vrptw.demands[stop]
-            table[start][stop] = (time, load)
+            table[str(start) + "_" + str(stop)] = (time, load)
 
     return table
 
@@ -184,8 +172,7 @@ def routes_length(vrptw, routes):
         for i in range(0, len(route)-1):
             length += vrptw.distances[route[i]][route[i+1]]
 
-    return int(length*(10**2))/(10.**2)
-
+    return round(length, 2) # int(length*(10**2))/(10.**2)
 
 
 def local_search_clean(vrptw, solution):
@@ -289,7 +276,7 @@ def local_search_clean(vrptw, solution):
 
                                 second_best = temp_second
 
-                                d_table = update_departure_table(vrptw, [first_best, second_best], d_table)
+                                # d_table = update_departure_table(vrptw, [first_best, second_best], d_table)
 
                 dlugosci_X2.append(best_X2)
 
@@ -314,11 +301,12 @@ def local_search_clean(vrptw, solution):
 
         return updated_solution
 
-    departure_table = create_departure_table(vrptw, solution["routes"])
+    departure_table = create_departure_dict(vrptw, solution["routes"])
 
     # main loop
     for i in range(0, len(solution["routes"])-1):
         for j in range(i+1, len(solution["routes"])):
+            departure_table = create_departure_dict(vrptw, solution["routes"])
             # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
             if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
                 solution["routes"][i], solution["routes"][j] = \
