@@ -29,9 +29,9 @@ def add_solution_to_graph(graph, solution):
 if __name__ == '__main__':
 
     # data = Data("solomon/local_search_test")
-    data = Data("solomon/C201_100")
+    data = Data("solomon/R206_100")
 
-    vrptw = VRPTW(data, vehicle_capacity=700)
+    vrptw = VRPTW(data, vehicle_capacity=1000)
 
     pos = nx.get_node_attributes(vrptw.graph, 'coordinates')
     demands = nx.get_node_attributes(vrptw.graph, 'demands')
@@ -43,10 +43,8 @@ if __name__ == '__main__':
 
     print(macs.vrptw.distances)
 
-    # nn_solution = macs.run()
-    nn_solution = {'length': 591.56, 'vehicles': 3, 'routes': [[0, 93, 5, 75, 2, 1, 99, 100, 97, 92, 94, 95, 98, 7, 3, 4, 89, 91, 88, 84, 86, 83, 82, 85, 76, 71, 70, 73, 80, 79, 81, 78, 77, 96, 87, 90, 0], [0, 67, 63, 62, 74, 72, 61, 64, 66, 69, 68, 65, 49, 55, 54, 53, 56, 58, 60, 59, 57, 40, 44, 46, 45, 51, 50, 52, 47, 43, 42, 41, 48, 0], [0, 20, 22, 24, 27, 30, 29, 6, 32, 33, 31, 35, 37, 38, 39, 36, 34, 28, 26, 23, 18, 19, 16, 14, 12, 15, 17, 13, 25, 9, 11, 10, 8, 21, 0]]}
-
-    # cProfile.run('macs.run()')
+    nn_solution = macs.run()
+    # nn_solution = {'length': 1650.8, 'vehicles': 19, 'routes': [[0, 2, 21, 73, 41, 56, 4, 0], [0, 65, 71, 81, 50, 68, 0], [0, 31, 88, 7, 10, 0], [0, 36, 47, 19, 8, 46, 17, 0], [0, 45, 82, 18, 84, 60, 89, 0], [0, 28, 12, 40, 53, 26, 0], [0, 52, 6, 0], [0, 30, 51, 9, 66, 1, 0], [0, 59, 99, 94, 96, 0], [0, 27, 69, 76, 79, 3, 54, 24, 80, 0], [0, 5, 83, 61, 85, 37, 93, 0], [0, 14, 44, 38, 43, 13, 0], [0, 33, 29, 78, 34, 35, 77, 0], [0, 92, 42, 15, 87, 57, 97, 0], [0, 63, 64, 49, 48, 0], [0, 39, 23, 67, 55, 25, 0], [0, 62, 11, 90, 20, 32, 70, 0], [0, 95, 98, 16, 86, 91, 100, 0], [0, 72, 75, 22, 74, 58, 0]]}    # cProfile.run('macs.run()')
     # macs.run()
 
     # nn_solution = nearest_neighbors_vrptw(vrptw)
@@ -84,6 +82,6 @@ if __name__ == '__main__':
     nx.draw_networkx(vrptw.graph, pos=pos, nodelist=vrptw.get_depo_ids(), with_labels=True, node_color='r',
                      node_size=300, font_color='k', font_size=8, labels=time_windows)
     nx.draw_networkx(vrptw.graph, pos=pos, nodelist=vrptw.get_clients_ids(), with_labels=True, node_color='k',
-                     node_size=200, font_color='r', font_size=8)
+                     node_size=100, font_color='r', font_size=8)
 
     plt.show()

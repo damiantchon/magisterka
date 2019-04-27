@@ -372,7 +372,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
             if best_TIME_solution:
                 self.lock.acquire()
-                if best_TIME_solution["length"] < self.best_solution["length"] and self.time_running:
+                if (best_TIME_solution["vehicles"] < self.best_solution["vehicles"] or best_TIME_solution["length"] < self.best_solution["length"]) and self.time_running:
 
                     self.best_solution = best_TIME_solution
                     self.time_running = False
