@@ -219,8 +219,8 @@ def check_solution_feasibility(vrptw, routes): #TODO zoptymalizować
 def check_feasibility_prime(vrptw, route, Xi_Xpi, d_table): # Zoptymalizowana versja "check_feasibility
 
     if (Xi_Xpi[0] >= 0):
-        time = d_table.get(str(route[Xi_Xpi[0]]) + "_" + str(route[Xi_Xpi[1]]))[0]
-        load = d_table.get(str(route[Xi_Xpi[0]]) + "_" + str(route[Xi_Xpi[1]]))[1]
+        time = d_table.get(str(route[Xi_Xpi[0]]) + "_" + str(route[Xi_Xpi[1]]))["time"]
+        load = d_table.get(str(route[Xi_Xpi[0]]) + "_" + str(route[Xi_Xpi[1]]))["load"]
     else:
         time = 0
         load = 0
@@ -239,19 +239,81 @@ def check_feasibility_prime(vrptw, route, Xi_Xpi, d_table): # Zoptymalizowana ve
     return True
 
 
-def create_departure_dict(vrptw, routes):
+def check_feasibility_bis(vrptw, route, last_y2, d_table):
+    is_feasible = False
+    if last_y2 is None:
+        last_y2 = {"index": 0, "time": 0, "load": 0}
+
+        # for i in range()
+
+    return is_feasible, last_y2
+
+
+def create_auxiliary_dict(vrptw, routes):
     table = {}
 
     for route in routes:
         time = 0
         load = 0
+
         for i in range(0, len(route)-1):
             start = route[i]
             stop = route[i+1]
 
+            # time and load
             time = max(time + vrptw.distances[start][stop], vrptw.time_windows[stop][0]) + vrptw.service_times[stop]
             load = load + vrptw.demands[stop]
-            table[str(start) + "_" + str(stop)] = (time, load)
+            table[str(start) + "_" + str(stop)] = {"time": time , "load": load}
+
+            # maximum lateness
+            route_latenesses = []
+
+            windows = vrptw.time_windows
+            services = vrptw.service_times
+            distances = vrptw.distances
+
+            r = route
+
+            l_time = 0
+            basic_lateness = 0
+
+            l_time = windows[r[i + 1]][1]  # 15
+            basic_lateness = windows[r[i + 1]][1] - windows[r[i + 1]][0]
+
+            route_latenesses.append(basic_lateness)  # (1, 5)
+            print("Basic lateness:", basic_lateness)
+
+
+            for j in range(i + 1, len(route)-1):
+
+                l_time += services[r[j]] + distances[r[j]][r[j+1]]
+                print("J:", j)
+                print("B_lateness:", basic_lateness)
+                print("Windows[1]", windows[r[j+1]][1])
+                print("L_time:", l_time)
+                print(basic_lateness + (windows[r[j+1]][1] - l_time))
+                route_latenesses.append(basic_lateness + (windows[r[j+1]][1] - l_time))
+
+            # l_time += services[r[len(r)-2]] + distances[r[len(r)-2]][r[len(r)-1]]
+            # route_latenesses.append(basic_lateness + (windows[len(r)-1][1] - l_time))
+
+            table[str(start) + "_" + str(stop)]["lateness"] = min(route_latenesses)
+
+
+
+        # fill load_to_go
+        table[str(route[len(route)-2]) + "_" + str(route[len(route)-1])]["load_to_go"] = 0
+        load_to_go = 0
+
+        for i in reversed(range(0, len(route) - 2)):
+
+            start = route[i]
+            stop = route[i + 1]
+
+            # "load to go" (how much more load do we need to finish this road from given city)
+            load_to_go = load_to_go + vrptw.demands[route[i+2]]
+
+            table[str(start) + "_" + str(stop)]["load_to_go"] = load_to_go
 
     return table
 
@@ -330,6 +392,11 @@ def local_search_clean(vrptw, solution):
         global best_len
         best_len = 0 #routes_length(vrptw, [first_route, second_route])
 
+        last_y2 = {}
+        last_y2["index"] = None
+        last_y2["departure"] = None
+        last_y2["load"] = None
+
         for X1_index, X1 in enumerate(first_route[:-1]):
             dlugosci_X2 = []
             for X2_index, X2 in enumerate(second_route[:-1]):
@@ -339,7 +406,6 @@ def local_search_clean(vrptw, solution):
                     for Y2_index, Y2 in enumerate(second_route[X2_index:-1], X2_index):
 
                         # swaperooni
-
                         if X1_index == Y1_index and X2_index == Y2_index:
 
                             temp = first_route[:X1_index + 1] + second_route[Y2_index + 1:]
@@ -351,11 +417,25 @@ def local_search_clean(vrptw, solution):
                             temp_first, temp_second = swap_edges(first_route, second_route, X1_index + 1, X2_index + 1,
                                                                  Y1_index + 1, Y2_index + 1)
 
-                        # if check_fisibility(vrptw, [temp_first]) is False:
-                        #     break
 
+                        #TODO Zoptymalizować liczenie (constant time - do starego Y2prime dodać nowy Y2prime i dalej
+                        #TODO propagować, zamiast liczenia trasy od zera
+
+                        # if X2_index == Y2_index:
+                        #     if check_feasibility_prime(vrptw, temp_first, (X1_index - 1, X1_index), d_table) is False:
+                        #         break
+                        if X2_index != Y2_index:
+                            if last_y2["index"] is None:
+                                is_feasible, last_y2 = check_feasibility_bis(vrptw=vrptw, route=temp_first, last_y2=None, d_table=d_table)
+
+                            else:
+                                is_feasible, last_y2 = check_feasibility_bis(vrptw=vrptw, route=temp_first, last_y2=last_y2, d_table=d_table)
+
+
+                        #TODO Koniec optymalizacji zamiast
                         if check_feasibility_prime(vrptw, temp_first, (X1_index - 1, X1_index), d_table) is False:
                             break
+                        #TODO Koniec zamiast :)
 
                         swaperooni_len = calculate_delta(X1_index,X2_index,Y1_index,Y2_index,r1=first_route,r2=second_route) #routes_length(vrptw, [temp_first, temp_second])
 
@@ -407,12 +487,10 @@ def local_search_clean(vrptw, solution):
 
         return updated_solution
 
-    departure_table = create_departure_dict(vrptw, solution["routes"])
-
     # main loop
     for i in range(0, len(solution["routes"])-1):
         for j in range(i+1, len(solution["routes"])):
-            departure_table = create_departure_dict(vrptw, solution["routes"])
+            departure_table = create_auxiliary_dict(vrptw, solution["routes"])
             # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
             if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
                 solution["routes"][i], solution["routes"][j] = \
