@@ -46,7 +46,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         # self.ACS_TIME(v+1)
         # self.ACS_VEI(v)
-
+        counter = 0
         # todo WARUNKI WYJŚCIA
         while True:
 
