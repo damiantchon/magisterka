@@ -175,6 +175,8 @@ def check_feasibility(vrptw, routes): #TODO zoptymalizować
         for i in range(0, len(route)-1):
 
             if time + vrptw.distances[route[i]][route[i+1]] > vrptw.time_windows[route[i+1]][1]:
+                print("Time window incorrect", time + vrptw.distances[route[i]][route[i+1]], ">", vrptw.time_windows[route[i+1]][1])
+                print("Time windows of", route[i + 1], vrptw.time_windows[route[i + 1]])
                 return False
             else:
                 print("Departure from", route[i], ":", time)
@@ -186,6 +188,7 @@ def check_feasibility(vrptw, routes): #TODO zoptymalizować
                 load = load + vrptw.demands[route[i+1]]
 
         if load > vrptw.vehicle_capacity:
+            print("LOAD TOO BIG", load, ">", vrptw.vehicle_capacity)
             return False
 
     return True
@@ -224,8 +227,8 @@ def check_solution_feasibility(vrptw, routes): #TODO zoptymalizować
 def check_feasibility_prime(vrptw, route, Xi_Xpi, d_table): # Zoptymalizowana versja "check_feasibility
 
     if (Xi_Xpi[0] >= 0):
-        time = d_table.get(str(route[Xi_Xpi[0]]) + "_" + str(route[Xi_Xpi[1]]))["time_b"]
-        load = d_table.get(str(route[Xi_Xpi[0]]) + "_" + str(route[Xi_Xpi[1]]))["load_b"]
+        time = d_table.get(str(route[Xi_Xpi[0]]) + str(route[Xi_Xpi[1]]))["time_b"]
+        load = d_table.get(str(route[Xi_Xpi[0]]) + str(route[Xi_Xpi[1]]))["load_b"]
     else:
         time = 0
         load = 0
@@ -245,7 +248,7 @@ def check_feasibility_prime(vrptw, route, Xi_Xpi, d_table): # Zoptymalizowana ve
 
 
 def ts(a, b):
-    return str(a) + "_" + str(b)
+    return str(a) + str(b)
 
 
 def check_feasibility_bis(vrptw, route, last_y2, d_table, edges, first, second):
@@ -284,10 +287,11 @@ def check_feasibility_bis(vrptw, route, last_y2, d_table, edges, first, second):
 
                 time += vrptw.distances[second[edges["Y2"]]][first[edges["Y1"]+1]]
                 # print("Time after coming back to ", second[edges["X2"]+1], first[edges["Y1"]+1], ":", time)
-                #sprawdzenie, czy po powrocie nie przekracza opóźnienia
+                # # sprawdzenie, czy po powrocie nie przekracza opóźnienia
                 # print("TIME (", time , ") >", "TW[] of", first[edges["Y1"]+1],":", vrptw.time_windows[first[edges["Y1"]+1]][0], "+", "lateness of ", ts(first[edges["Y1"]], first[edges["Y1"]+1]), ": ", d_table[ts(first[edges["Y1"]], first[edges["Y1"]+1])]["lateness"])
                 if time > vrptw.time_windows[first[edges["Y1"]+1]][0] + \
                         d_table[ts(first[edges["Y1"]], first[edges["Y1"]+1])]["lateness"]:
+
                     is_feasible = False
 
             last_y2["index"] = edges["Y2"]
@@ -379,7 +383,7 @@ def create_auxiliary_dict(vrptw, routes):
             time_b = max(time_b + vrptw.distances[start][stop], vrptw.time_windows[stop][0]) + vrptw.service_times[stop]
             load_a = load_a + vrptw.demands[start]
             load_b = load_b + vrptw.demands[stop]
-            table[str(start) + "_" + str(stop)] = {"time_a": time_a, "time_b": time_b, "load_a": load_a, "load_b": load_b}
+            table[str(start) + str(stop)] = {"time_a": time_a, "time_b": time_b, "load_a": load_a, "load_b": load_b}
 
             # maximum lateness
             route_latenesses = []
@@ -408,13 +412,13 @@ def create_auxiliary_dict(vrptw, routes):
 
 
 
-            table[str(start) + "_" + str(stop)]["lateness"] = min(route_latenesses)
+            table[str(start) + str(stop)]["lateness"] = min(route_latenesses)
 
 
 
         # fill load_to_go
-        table[str(route[len(route)-2]) + "_" + str(route[len(route)-1])]["load_to_go_a"] = 0
-        table[str(route[len(route)-2]) + "_" + str(route[len(route)-1])]["load_to_go_b"] = 0
+        table[str(route[len(route)-2]) + str(route[len(route)-1])]["load_to_go_a"] = 0
+        table[str(route[len(route)-2]) + str(route[len(route)-1])]["load_to_go_b"] = 0
         load_to_go_a = 0
         load_to_go_b = 0
 
@@ -428,8 +432,8 @@ def create_auxiliary_dict(vrptw, routes):
 
             load_to_go_b = load_to_go_b + vrptw.demands[route[i+2]]
 
-            table[str(start) + "_" + str(stop)]["load_to_go_a"] = load_to_go_a
-            table[str(start) + "_" + str(stop)]["load_to_go_b"] = load_to_go_b
+            table[str(start) + str(stop)]["load_to_go_a"] = load_to_go_a
+            table[str(start) + str(stop)]["load_to_go_b"] = load_to_go_b
 
     # print(table)
     return table
@@ -542,48 +546,48 @@ def local_search_clean(vrptw, solution):
                         #         break
 
                         #TODO By this
-                        if X1_index == Y1_index and X2_index == Y2_index:
-                            if check_feasibility_bis_x(vrptw, temp_first, edges, d_table, first_route, second_route) is False:
-                                break
-                            else:
-                                pass
-
-
-                        if X2_index != Y2_index:
-                            # print(last_y2)
-                            if last_y2 is None:
-
-                                is_feasible, last_y2 = check_feasibility_bis(vrptw=vrptw, route=temp_first, last_y2=None, d_table=d_table, edges=edges, first=first_route, second=second_route)
-
-                            else:
-                                is_feasible, last_y2 = check_feasibility_bis(vrptw=vrptw, route=temp_first, last_y2=last_y2, d_table=d_table, edges=edges, first=first_route, second=second_route)
-
-                        else:
-                            is_feasible = True
-
-                        if not is_feasible:
-                            break
+                        # if X1_index == Y1_index and X2_index == Y2_index:
+                        #     if check_feasibility_bis_x(vrptw, temp_first, edges, d_table, first_route, second_route) is False:
+                        #         break
+                        #     else:
+                        #         pass
+                        #
+                        #
+                        # if X2_index != Y2_index:
+                        #     # print(last_y2)
+                        #     if last_y2 is None:
+                        #
+                        #         is_feasible, last_y2 = check_feasibility_bis(vrptw=vrptw, route=temp_first, last_y2=None, d_table=d_table, edges=edges, first=first_route, second=second_route)
+                        #
+                        #     else:
+                        #         is_feasible, last_y2 = check_feasibility_bis(vrptw=vrptw, route=temp_first, last_y2=last_y2, d_table=d_table, edges=edges, first=first_route, second=second_route)
+                        #
+                        # else:
+                        #     is_feasible = True
+                        #
+                        # if not is_feasible:
+                        #     break
 
                         #
                         # TODO Koniec optymalizacji zamiast
-                        # if check_feasibility_prime(vrptw, temp_first, (X1_index - 1, X1_index), d_table) is False:
-                        #     break
+                        if check_feasibility_prime(vrptw, temp_first, (X1_index - 1, X1_index), d_table) is False:
+                            break
                         # TODO Koniec zamiast :)
 
-                        swaperooni_len = calculate_delta(X1_index,X2_index,Y1_index,Y2_index,r1=first_route,r2=second_route) #routes_length(vrptw, [temp_first, temp_second])
+                        swaperooni_len = calculate_delta(X1_index,X2_index,Y1_index,Y2_index,r1=first_route,r2=second_route)
 
                         if swaperooni_len < best_X2:
                             best_X2 = swaperooni_len
 
-                        dlugosci_Y2.append(swaperooni_len)
+                        # dlugosci_Y2.append(swaperooni_len)
 
-                        if len(dlugosci_Y2) == 3:
-                            if dlugosci_Y2[2] > dlugosci_Y2[1] > dlugosci_Y2[0]: # or (dlugosci_Y2[2] > best_len and dlugosci_Y2[1] > best_len and dlugosci_Y2[0] > best_len):
-
-                                dlugosci_Y2.clear()
-                                break
-                            else:
-                                dlugosci_Y2.pop(0)
+                        # if len(dlugosci_Y2) == 3:
+                        #     if dlugosci_Y2[2] > dlugosci_Y2[1] > dlugosci_Y2[0]:
+                        #
+                        #         dlugosci_Y2.clear()
+                        #         break
+                        #     else:
+                        #         dlugosci_Y2.pop(0)
 
                         if swaperooni_len < best_len:
                             # if check_fisibility(vrptw, [temp_second]):
@@ -597,15 +601,15 @@ def local_search_clean(vrptw, solution):
 
                                 # d_table = update_departure_table(vrptw, [first_best, second_best], d_table)
 
-                dlugosci_X2.append(best_X2)
+                # dlugosci_X2.append(best_X2)
 
-                if len(dlugosci_X2) == 3:
-                    if dlugosci_X2[2] > dlugosci_X2[1] > dlugosci_X2[0]: # or (dlugosci_X2[2] > best_len and dlugosci_X2[1] > best_len and dlugosci_X2[0] > best_len):
-
-                        dlugosci_X2.clear()
-                        break
-                    else:
-                        dlugosci_X2.pop(0)
+                # if len(dlugosci_X2) == 3:
+                #     if dlugosci_X2[2] > dlugosci_X2[1] > dlugosci_X2[0]: # or (dlugosci_X2[2] > best_len and dlugosci_X2[1] > best_len and dlugosci_X2[0] > best_len):
+                #
+                #         dlugosci_X2.clear()
+                #         break
+                #     else:
+                #         dlugosci_X2.pop(0)
 
         return first_best, second_best
 

@@ -83,10 +83,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             temp_cities_to_visit = cities_to_visit.copy()
             if with_depos == False:
                 temp_cities_to_visit = list(set(temp_cities_to_visit) - set(macs_ds.depo_ids))
-            # print("WITH DEPOS", with_depos)
-            # print("CURRENT LOCATION", current_location)
-            # print("CURRENT TIME", current_time)
-            # print("TEMP CITIES TO VISIT", temp_cities_to_visit)
+
             for city in temp_cities_to_visit:
                 if current_time + macs_ds.distances[current_location][city] <= macs_ds.time_windows[city][1] \
                     and max(current_time + macs_ds.distances[current_location][city], macs_ds.time_windows[city][0]) + \
@@ -94,7 +91,6 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                     and load + macs_ds.demands[city] <= macs_ds.vehicle_capacity:
 
                     fesible.append(city)
-            # print("FESIBLE CITIES", fesible)
             return fesible
 
         def get_next_location(pheromones):
