@@ -1,4 +1,5 @@
 from scipy.spatial import distance
+import copy
 
 
 def manhattan_distance(x, y):
@@ -227,8 +228,8 @@ def check_solution_feasibility(vrptw, routes): #TODO zoptymalizować
 def check_feasibility_prime(vrptw, route, Xi_Xpi, d_table): # Zoptymalizowana versja "check_feasibility
 
     if (Xi_Xpi[0] >= 0):
-        time = d_table.get(str(route[Xi_Xpi[0]]) + str(route[Xi_Xpi[1]]))["time_b"]
-        load = d_table.get(str(route[Xi_Xpi[0]]) + str(route[Xi_Xpi[1]]))["load_b"]
+        time = d_table[route[Xi_Xpi[0]]][route[Xi_Xpi[1]]]["time_b"]
+        load = d_table[route[Xi_Xpi[0]]][route[Xi_Xpi[1]]]["load_b"]
     else:
         time = 0
         load = 0
@@ -248,10 +249,10 @@ def check_feasibility_prime(vrptw, route, Xi_Xpi, d_table): # Zoptymalizowana ve
 
 
 def ts(a, b):
-    return str(a) + str(b)
+    return str(a) + " " + str(b)
 
 
-def check_feasibility_bis(vrptw, route, last_y2, d_table, edges, first, second):
+def check_feasibility_bis(vrptw, last_y2, d_table, edges, first, second):
     is_feasible = True
 
     # print(route)
@@ -263,18 +264,18 @@ def check_feasibility_bis(vrptw, route, last_y2, d_table, edges, first, second):
         time = 0
         # LOAD
 
-        load += d_table[ts(first[edges["X1"]], first[edges["X1"]+1])]["load_a"]
-        load += d_table[ts(second[edges["Y2"]], second[edges["Y2"]+1])]["load_a"] - d_table[ts(second[edges["X2"]], second[edges["X2"]+1])]["load_a"]
+        load += d_table[first[edges["X1"]]][first[edges["X1"]+1]]["load_a"]
+        load += d_table[second[edges["Y2"]]][second[edges["Y2"]+1]]["load_a"] - d_table[second[edges["X2"]]][second[edges["X2"]+1]]["load_a"]
 
         last_y2["load"] = load
 
-        load += d_table[ts(first[edges["Y1"]], first[edges["Y1"]+1])]["load_to_go_a"]
+        load += d_table[first[edges["Y1"]]][first[edges["Y1"]+1]]["load_to_go_a"]
 
         if load > vrptw.vehicle_capacity:
             is_feasible = False
 
         if is_feasible:
-            time += d_table[ts(first[edges["X1"]], first[edges["X1"]+1])]["time_a"] + \
+            time += d_table[first[edges["X1"]]][first[edges["X1"]+1]]["time_a"] + \
                     vrptw.distances[first[edges["X1"]]][second[edges["X2"]+1]]
 
             if time > vrptw.time_windows[second[edges["X2"]+1]][1]:
@@ -290,7 +291,7 @@ def check_feasibility_bis(vrptw, route, last_y2, d_table, edges, first, second):
                 # # sprawdzenie, czy po powrocie nie przekracza opóźnienia
                 # print("TIME (", time , ") >", "TW[] of", first[edges["Y1"]+1],":", vrptw.time_windows[first[edges["Y1"]+1]][0], "+", "lateness of ", ts(first[edges["Y1"]], first[edges["Y1"]+1]), ": ", d_table[ts(first[edges["Y1"]], first[edges["Y1"]+1])]["lateness"])
                 if time > vrptw.time_windows[first[edges["Y1"]+1]][0] + \
-                        d_table[ts(first[edges["Y1"]], first[edges["Y1"]+1])]["lateness"]:
+                        d_table[first[edges["Y1"]]][first[edges["Y1"]+1]]["lateness"]:
 
                     is_feasible = False
 
@@ -298,6 +299,7 @@ def check_feasibility_bis(vrptw, route, last_y2, d_table, edges, first, second):
 
     else:
 
+        # if
         time = last_y2["time"]
         # print("Time at last_y2", time)
         load = last_y2["load"]
@@ -308,7 +310,7 @@ def check_feasibility_bis(vrptw, route, last_y2, d_table, edges, first, second):
         # print("Current load: ", load)
         last_y2["load"] = load
 
-        load += d_table[ts(first[edges["Y1"]], first[edges["Y1"]+1])]["load_to_go_a"]
+        load += d_table[first[edges["Y1"]]][first[edges["Y1"]+1]]["load_to_go_a"]
         # print("Full load:", load)
         if load > vrptw.vehicle_capacity:
             is_feasible = False
@@ -329,7 +331,7 @@ def check_feasibility_bis(vrptw, route, last_y2, d_table, edges, first, second):
                 time += vrptw.distances[second[edges["Y2"]]][first[edges["Y1"]+1]]
 
                 if time > vrptw.time_windows[first[edges["Y1"]+1]][0] + \
-                        d_table[ts(first[edges["Y1"]], first[edges["Y1"]+1])]["lateness"]:
+                        d_table[first[edges["Y1"]]][first[edges["Y1"]+1]]["lateness"]:
                     is_feasible = False
 
             last_y2["index"] = edges["Y2"]
@@ -337,32 +339,34 @@ def check_feasibility_bis(vrptw, route, last_y2, d_table, edges, first, second):
     return is_feasible, last_y2
 
 
-def check_feasibility_bis_x(vrptw, route, edges, d_table, first, second):
+def check_feasibility_bis_x(vrptw, edges, d_table, first, second):
 
     feasible = True
 
     load = 0
     time = 0
 
-    load += d_table[ts(first[edges["X1"]], first[edges["X1"]+1])]["load_a"]
-    load += d_table[ts(second[edges["Y2"]], second[edges["Y2"] + 1])]["load_to_go_b"]
+    load += d_table[first[edges["X1"]]][first[edges["X1"]+1]]["load_a"]
+    load += d_table[second[edges["Y2"]]][second[edges["Y2"] + 1]]["load_to_go_b"]
 
     if load > vrptw.vehicle_capacity:
         feasible = False
 
     if feasible:
-        time = d_table[ts(first[edges["X1"]], first[edges["X1"]+1])]["time_a"]
+        time = d_table[first[edges["X1"]]][first[edges["X1"]+1]]["time_a"]
         time += vrptw.distances[first[edges["X1"]]][second[edges["Y2"] + 1]]
 
         if time > vrptw.time_windows[second[edges["Y2"] + 1]][0] + \
-                d_table[ts(second[edges["Y2"]], second[edges["Y2"] + 1])]["lateness"]:
+                d_table[second[edges["Y2"]]][second[edges["Y2"] + 1]]["lateness"]:
             feasible = False
 
     return feasible
 
 
-def create_auxiliary_dict(vrptw, routes):
-    table = {}
+def create_auxiliary_table(vrptw, routes):
+    table = []
+
+    table = [[{} for i in range(0, vrptw.size)] for j in range(0, vrptw.size)]
 
     for route in routes:
         time_a = 0
@@ -383,7 +387,7 @@ def create_auxiliary_dict(vrptw, routes):
             time_b = max(time_b + vrptw.distances[start][stop], vrptw.time_windows[stop][0]) + vrptw.service_times[stop]
             load_a = load_a + vrptw.demands[start]
             load_b = load_b + vrptw.demands[stop]
-            table[str(start) + str(stop)] = {"time_a": time_a, "time_b": time_b, "load_a": load_a, "load_b": load_b}
+            table[start][stop] = {"time_a": time_a, "time_b": time_b, "load_a": load_a, "load_b": load_b}
 
             # maximum lateness
             route_latenesses = []
@@ -412,15 +416,17 @@ def create_auxiliary_dict(vrptw, routes):
 
 
 
-            table[str(start) + str(stop)]["lateness"] = min(route_latenesses)
+            table[start][stop]["lateness"] = min(route_latenesses)
 
 
 
         # fill load_to_go
-        table[str(route[len(route)-2]) + str(route[len(route)-1])]["load_to_go_a"] = 0
-        table[str(route[len(route)-2]) + str(route[len(route)-1])]["load_to_go_b"] = 0
+
         load_to_go_a = 0
         load_to_go_b = 0
+
+        table[route[len(route) - 2]][route[len(route) - 1]]["load_to_go_a"] = 0
+        table[route[len(route) - 2]][route[len(route) - 1]]["load_to_go_b"] = 0
 
         for i in reversed(range(0, len(route) - 2)):
 
@@ -432,8 +438,10 @@ def create_auxiliary_dict(vrptw, routes):
 
             load_to_go_b = load_to_go_b + vrptw.demands[route[i+2]]
 
-            table[str(start) + str(stop)]["load_to_go_a"] = load_to_go_a
-            table[str(start) + str(stop)]["load_to_go_b"] = load_to_go_b
+            table[start][stop]["load_to_go_a"] = load_to_go_a
+            table[start][stop]["load_to_go_b"] = load_to_go_b
+
+
 
     # print(table)
     return table
@@ -483,7 +491,7 @@ def local_search_clean(vrptw, solution):
             delta = dist[r2[X2i]][r2[Y2i + 1]] + dist[r1[X1i]][r2[X2i + 1]] + dist[r2[Y2i]][r1[Y1i + 1]] - \
                     (dist[r2[X2i]][r2[X2i + 1]] + dist[r2[Y2i]][r2[Y2i + 1]] + dist[r1[X1i]][r1[X1i + 1]])
 
-        elif X1i != Y1i and X2i == Y2i:
+        else: # X1i != Y1i and X2i == Y2i:
             delta = dist[r1[X1i]][r1[Y1i + 1]] + dist[r2[X2i]][r1[X1i + 1]] + dist[r1[Y1i]][r2[Y2i + 1]] - \
                     (dist[r1[X1i]][r1[X1i + 1]] + dist[r1[Y1i]][r1[Y1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
 
@@ -523,17 +531,7 @@ def local_search_clean(vrptw, solution):
                     dlugosci_Y2 = []
                     for Y2_index, Y2 in enumerate(second_route[X2_index:-1], X2_index):
                         edges = {"X1": X1_index, "Y1": Y1_index, "X2": X2_index, "Y2": Y2_index}
-                        # swaperooni
-                        if X1_index == Y1_index and X2_index == Y2_index:
 
-                            temp = first_route[:X1_index + 1] + second_route[Y2_index + 1:]
-                            temp_second = second_route[:X2_index + 1] + first_route[Y1_index + 1:]
-                            temp_first = temp
-
-                        else:
-
-                            temp_first, temp_second = swap_edges(first_route, second_route, X1_index + 1, X2_index + 1,
-                                                                 Y1_index + 1, Y2_index + 1)
 
 
                         #TODO Zoptymalizować liczenie (constant time - do starego Y2prime dodać nowy Y2prime i dalej
@@ -545,34 +543,52 @@ def local_search_clean(vrptw, solution):
                         #     if check_feasibility_prime(vrptw, temp_first, (X1_index - 1, X1_index), d_table) is False:
                         #         break
 
-                        #TODO By this
-                        # if X1_index == Y1_index and X2_index == Y2_index:
-                        #     if check_feasibility_bis_x(vrptw, temp_first, edges, d_table, first_route, second_route) is False:
-                        #         break
-                        #     else:
-                        #         pass
-                        #
-                        #
-                        # if X2_index != Y2_index:
-                        #     # print(last_y2)
-                        #     if last_y2 is None:
-                        #
-                        #         is_feasible, last_y2 = check_feasibility_bis(vrptw=vrptw, route=temp_first, last_y2=None, d_table=d_table, edges=edges, first=first_route, second=second_route)
-                        #
-                        #     else:
-                        #         is_feasible, last_y2 = check_feasibility_bis(vrptw=vrptw, route=temp_first, last_y2=last_y2, d_table=d_table, edges=edges, first=first_route, second=second_route)
-                        #
-                        # else:
-                        #     is_feasible = True
-                        #
-                        # if not is_feasible:
-                        #     break
+                        # TODO By this
+                        if X1_index == Y1_index and X2_index == Y2_index:
+                            if check_feasibility_bis_x(vrptw, edges, d_table, first_route, second_route) is False:
+                                break
+                            else:
+                                pass
 
-                        #
-                        # TODO Koniec optymalizacji zamiast
-                        if check_feasibility_prime(vrptw, temp_first, (X1_index - 1, X1_index), d_table) is False:
+
+                        if X2_index != Y2_index:
+                            # print(last_y2)
+                            if last_y2 is None:
+
+                                is_feasible, last_y2 = check_feasibility_bis(vrptw=vrptw, last_y2=None, d_table=d_table, edges=edges, first=first_route, second=second_route)
+
+                            else:
+                                is_feasible, last_y2 = check_feasibility_bis(vrptw=vrptw, last_y2=last_y2, d_table=d_table, edges=edges, first=first_route, second=second_route)
+
+                        else:
+                            is_feasible = True
+
+                        #TODO DIFF CHECK
+                        # is_feasible_bis = check_feasibility_prime(vrptw, temp_first, (X1_index - 1, X1_index), d_table)
+                        # if is_feasible != is_feasible_bis:
+                        #     print("From Bis:", is_feasible)
+                        #     print("From Prime:", is_feasible_bis)
+                        #     print("First Route:", first_route)
+                        #     print("Second Route:", second_route)
+                        #     print("Edges", edges)
+                        #     print("Temp First Route:", temp_first)
+                        #     print("Temp Second Route", temp_second)
+                        #     print("Last_y2", last_y2)
+                        #     print("Prev last y2", prev_last_y2)
+                        #     print("Lateness:",d_table[ts(first_route[edges["Y1"]], first_route[edges["Y1"]+1])]["lateness"])
+                        #     print("Time window:", vrptw.time_windows[first_route[edges["Y1"]+1]][0])
+                        #     print("D_table", d_table)
+
+
+                        if not is_feasible:
                             break
+
+
+                        # TODO Koniec optymalizacji zamiast
+                        # if check_feasibility_prime(vrptw, temp_first, (X1_index - 1, X1_index), d_table) is False:
+                        #     break
                         # TODO Koniec zamiast :)
+
 
                         swaperooni_len = calculate_delta(X1_index,X2_index,Y1_index,Y2_index,r1=first_route,r2=second_route)
 
@@ -580,7 +596,7 @@ def local_search_clean(vrptw, solution):
                             best_X2 = swaperooni_len
 
                         # dlugosci_Y2.append(swaperooni_len)
-
+                        #
                         # if len(dlugosci_Y2) == 3:
                         #     if dlugosci_Y2[2] > dlugosci_Y2[1] > dlugosci_Y2[0]:
                         #
@@ -588,8 +604,22 @@ def local_search_clean(vrptw, solution):
                         #         break
                         #     else:
                         #         dlugosci_Y2.pop(0)
-
+                        #
                         if swaperooni_len < best_len:
+
+                            # swaperooni
+                            if X1_index == Y1_index and X2_index == Y2_index:
+
+                                temp = first_route[:X1_index + 1] + second_route[Y2_index + 1:]
+                                temp_second = second_route[:X2_index + 1] + first_route[Y1_index + 1:]
+                                temp_first = temp
+
+                            else:
+
+                                temp_first, temp_second = swap_edges(first_route, second_route, X1_index + 1,
+                                                                     X2_index + 1,
+                                                                     Y1_index + 1, Y2_index + 1)
+
                             # if check_fisibility(vrptw, [temp_second]):
                             if check_feasibility_prime(vrptw, temp_second, (X2_index - 1, X2_index), d_table):
 
@@ -602,9 +632,9 @@ def local_search_clean(vrptw, solution):
                                 # d_table = update_departure_table(vrptw, [first_best, second_best], d_table)
 
                 # dlugosci_X2.append(best_X2)
-
+                #
                 # if len(dlugosci_X2) == 3:
-                #     if dlugosci_X2[2] > dlugosci_X2[1] > dlugosci_X2[0]: # or (dlugosci_X2[2] > best_len and dlugosci_X2[1] > best_len and dlugosci_X2[0] > best_len):
+                #     if  dlugosci_X2[2] > dlugosci_X2[1] > dlugosci_X2[0]: # or (dlugosci_X2[2] > best_len and dlugosci_X2[1] > best_len and dlugosci_X2[0] > best_len):
                 #
                 #         dlugosci_X2.clear()
                 #         break
@@ -627,7 +657,7 @@ def local_search_clean(vrptw, solution):
     # main loop
     for i in range(0, len(solution["routes"])-1):
         for j in range(i+1, len(solution["routes"])):
-            departure_table = create_auxiliary_dict(vrptw, solution["routes"])
+            departure_table = create_auxiliary_table(vrptw, solution["routes"])
             # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
             if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
                 solution["routes"][i], solution["routes"][j] = \
@@ -636,7 +666,6 @@ def local_search_clean(vrptw, solution):
     # aktualizacja rozwiązania
     print(update_solution(solution))
     return update_solution(solution)
-
 
 
 
