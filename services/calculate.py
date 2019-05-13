@@ -529,21 +529,16 @@ def local_search_clean(vrptw, solution):
                 for Y1_index, Y1 in enumerate(first_route[X1_index:-1], X1_index):
                     last_y2 = None
                     dlugosci_Y2 = []
+
+                    if Y1_index >= X1_index+6:
+                        break
+
                     for Y2_index, Y2 in enumerate(second_route[X2_index:-1], X2_index):
                         edges = {"X1": X1_index, "Y1": Y1_index, "X2": X2_index, "Y2": Y2_index}
 
+                        if Y2_index >= X2_index+6:
+                            break
 
-
-                        #TODO Zoptymalizować liczenie (constant time - do starego Y2prime dodać nowy Y2prime i dalej
-                        #TODO propagować, zamiast liczenia trasy od zera
-
-
-                        #TODO Replace this
-                        # if X2_index == Y2_index:
-                        #     if check_feasibility_prime(vrptw, temp_first, (X1_index - 1, X1_index), d_table) is False:
-                        #         break
-
-                        # TODO By this
                         if X1_index == Y1_index and X2_index == Y2_index:
                             if check_feasibility_bis_x(vrptw, edges, d_table, first_route, second_route) is False:
                                 break
@@ -584,27 +579,12 @@ def local_search_clean(vrptw, solution):
                             break
 
 
-                        # TODO Koniec optymalizacji zamiast
-                        # if check_feasibility_prime(vrptw, temp_first, (X1_index - 1, X1_index), d_table) is False:
-                        #     break
-                        # TODO Koniec zamiast :)
-
-
                         swaperooni_len = calculate_delta(X1_index,X2_index,Y1_index,Y2_index,r1=first_route,r2=second_route)
 
                         if swaperooni_len < best_X2:
                             best_X2 = swaperooni_len
 
-                        # dlugosci_Y2.append(swaperooni_len)
-                        #
-                        # if len(dlugosci_Y2) == 3:
-                        #     if dlugosci_Y2[2] > dlugosci_Y2[1] > dlugosci_Y2[0]:
-                        #
-                        #         dlugosci_Y2.clear()
-                        #         break
-                        #     else:
-                        #         dlugosci_Y2.pop(0)
-                        #
+
                         if swaperooni_len < best_len:
 
                             # swaperooni
@@ -620,7 +600,7 @@ def local_search_clean(vrptw, solution):
                                                                      X2_index + 1,
                                                                      Y1_index + 1, Y2_index + 1)
 
-                            # if check_fisibility(vrptw, [temp_second]):
+
                             if check_feasibility_prime(vrptw, temp_second, (X2_index - 1, X2_index), d_table):
 
                                 best_len = swaperooni_len
@@ -629,17 +609,7 @@ def local_search_clean(vrptw, solution):
 
                                 second_best = temp_second
 
-                                # d_table = update_departure_table(vrptw, [first_best, second_best], d_table)
 
-                # dlugosci_X2.append(best_X2)
-                #
-                # if len(dlugosci_X2) == 3:
-                #     if  dlugosci_X2[2] > dlugosci_X2[1] > dlugosci_X2[0]: # or (dlugosci_X2[2] > best_len and dlugosci_X2[1] > best_len and dlugosci_X2[0] > best_len):
-                #
-                #         dlugosci_X2.clear()
-                #         break
-                #     else:
-                #         dlugosci_X2.pop(0)
 
         return first_best, second_best
 
@@ -664,7 +634,7 @@ def local_search_clean(vrptw, solution):
                     local_search_single(solution["routes"][i], solution["routes"][j], departure_table)
 
     # aktualizacja rozwiązania
-    print(update_solution(solution))
+    # print(update_solution(solution))
     return update_solution(solution)
 
 

@@ -28,11 +28,11 @@ def add_solution_to_graph(graph, solution):
 
 if __name__ == '__main__':
 
-    data = Data("solomon/RC2/RC201_100")
+    data = Data("solomon/RC1/RC102_100")
     # data = Data("solomon/local_search_test")
     # data = Data("solomon/auxiliary_dict_test")
 
-    vrptw = VRPTW(data, vehicle_capacity=1000)
+    vrptw = VRPTW(data, vehicle_capacity=200)
 
     pos = nx.get_node_attributes(vrptw.graph, 'coordinates')
     demands = nx.get_node_attributes(vrptw.graph, 'demands')

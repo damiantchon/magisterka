@@ -292,11 +292,11 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             # print("BEFORE", solution)
             last_solution_length = solution["length"]
 
-            # solution = local_search_clean(macs_ds, solution)
-            #
-            # while (last_solution_length > solution["length"]):
-            #     last_solution_length = solution["length"]
-            #     solution = local_search_clean(macs_ds, solution)
+            solution = local_search_clean(macs_ds, solution)
+
+            while (last_solution_length > solution["length"]):
+                last_solution_length = solution["length"]
+                solution = local_search_clean(macs_ds, solution)
             print(solution)
         return solution
 
