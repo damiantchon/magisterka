@@ -1,12 +1,15 @@
 from services.calculate import nearest_neighbors_vrptw, nearest_neighbors_vrptw_vei, local_search_clean
-import threading
-from threading import Thread
-from threading import Event
-from VRPTW import VRPTW_MACS_DS
+import multiprocessing as mp
+from queue import Full, Empty
+from multiprocessing import Queue
+import time
+import os
+
+from VRPTW import VRPTW_MACS_DS, Data, VRPTW
 import numpy as np
 import random
 from services.calculate import routes_length, check_solution_feasibility
-import copy
+
 
 
 class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems With Time Windows
@@ -21,20 +24,18 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
         self.q0 = q0
         self.p = p
 
+        self.starting_time = 0
+        self.search_duration = 0
+
+
         self.pheromones_TIME = [] # 2 wymiarowa tablica zawierająca informacje o feromonie z i na j
         self.pheromones_VEI = [] # 2 wymiarowa tablica zawierająca informacje o feromonie z i na j
-        self.shortest_path = []
 
-        self.best_solution = None
-        self.best_solution_updated = False
 
-        self.lock = threading.Lock()
-        self.event = Event()
+    def run(self, search_duration):
+        self.search_duration = search_duration
+        self.starting_time = time.time()
 
-        self.vei_running = True
-        self.time_running = True
-
-    def run(self):
         self.best_solution = nearest_neighbors_vrptw(self.vrptw)
         self.best_solution = local_search_clean(self.vrptw, self.best_solution)
 
@@ -43,33 +44,24 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
 
         v = self.best_solution["vehicles"]
-
-        # self.ACS_TIME(v+1)
-        # self.ACS_VEI(v)
-        counter = 0
-        # todo WARUNKI WYJŚCIA
-        while True:
-
+        while self.starting_time + self.search_duration > time.time():
             v = self.best_solution["vehicles"]
 
-            vei_thread = Thread(target=self.ACS_VEI, args=(v,)) #TODO Poprawić "v-ki"
-            time_thread = Thread(target=self.ACS_TIME, args=(v+1,))
+            vei_process = mp.Process(target=self.ACS_VEI, args=(v,))
+            time_process = mp.Process(target=self.ACS_TIME, args=(v + 1,))
 
-            vei_thread.start()
-            time_thread.start()
+            vei_process.start()
+            time_process.start()
 
-            self.event.wait()
-            self.event.clear()
+
             self.vei_running = False
             self.time_running = False
 
-            vei_thread.join()
-            time_thread.join()
 
             self.vei_running = True
             self.time_running = True
 
-
+        # todo WARUNKI WYJŚCIA
 
     def new_active_ant(self, k, local_search, IN, macs_ds, pheromones):
 
@@ -297,21 +289,21 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             while (last_solution_length > solution["length"]):
                 last_solution_length = solution["length"]
                 solution = local_search_clean(macs_ds, solution)
-            print(solution)
+            print(os.getpid(), solution)
         return solution
 
-    def ACS_VEI(self, v):
+    def ACS_VEI(self, v, best_solution, stop_time, queue, vei_time_queue):
 
         print("ACS_VEI v =", v)
 
         macs_ds = VRPTW_MACS_DS(self.vrptw, v)
-        self.pheromones_VEI = self.initialize_pheromones(macs_ds.size)
+        self.pheromones_VEI = self.initialize_pheromones(macs_ds.size, best_solution)
 
         best_VEI_solution = nearest_neighbors_vrptw_vei(vrptw=macs_ds, v=v)
 
         IN = [0] * macs_ds.size
 
-        while self.vei_running:
+        while stop_time > time.time():
 
             kth_solutions = []
             for k in range(0, self.m):
@@ -326,62 +318,59 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 best_VEI_solution = best_colony_solution
                 IN = [0] * macs_ds.size
 
-                print("CHECKING FISIBILITY OF", best_VEI_solution)
+                print("CHECKING FISIBILITY OF (len{})".format(self.count_customers(best_VEI_solution)), best_VEI_solution)
                 if check_solution_feasibility(self.vrptw, best_VEI_solution["routes"]):
-                    print("FEASIBLE")
-                    self.lock.acquire()
-                    self.best_solution = best_VEI_solution
-                    self.vei_running = False
-                    self.time_running = False
-                    if not self.event.isSet():
-                        self.event.set()
-                    self.lock.release()
+                    queue.put(best_VEI_solution)
 
+            self.pheromones_VEI = self.update_pheromones(best_VEI_solution, self.pheromones_VEI, best_solution)
 
-            self.pheromones_VEI = self.update_pheromones(best_VEI_solution, self.pheromones_VEI)
-            self.lock.acquire()
-            self.pheromones_VEI = self.update_pheromones(self.best_solution, self.pheromones_VEI)
-            self.lock.release()
+            try:
+                best_solution = vei_time_queue.get_nowait()
+                print("VEI's NEW BEST SOLUTION is", best_solution)
+            except Empty:
+                pass
+
+            self.pheromones_VEI = self.update_pheromones(best_solution, self.pheromones_VEI, best_solution)
+
         print("DEAD :(")
 
-
-
-    def ACS_TIME(self, v):
+    def ACS_TIME(self, v, best_solution, start_time, stop_time, queue, vei_time_queue):
 
         print("ACS_TIME v =", v)
 
         macs_ds = VRPTW_MACS_DS(self.vrptw, v)
 
-        self.pheromones_TIME = self.initialize_pheromones(macs_ds.size)
+        self.pheromones_TIME = self.initialize_pheromones(macs_ds.size, best_solution)
 
-        while self.time_running:
-            print("BEST SOLUTION:", self.best_solution)
+        while stop_time > time.time():
+
+            print("BEST SOLUTION:", best_solution)
             print(macs_ds.depo_ids)
             kth_solutions = []
 
             for k in range(0, self.m):
-                kth_solutions.append(self.new_active_ant(k=1, local_search=True, IN=0, macs_ds=macs_ds, pheromones=self.pheromones_TIME))
-                if self.time_running is False:
+                if not stop_time > time.time():
                     break
+                else:
+                     kth_solutions.append(self.new_active_ant(k=1, local_search=True, IN=0, macs_ds=macs_ds, pheromones=self.pheromones_TIME))
+
 
             best_TIME_solution = self.get_best_solution_TIME(macs_ds=macs_ds, solutions=kth_solutions)
 
             if best_TIME_solution:
-                self.lock.acquire()
-                if (best_TIME_solution["vehicles"] < self.best_solution["vehicles"] or best_TIME_solution["length"] < self.best_solution["length"]) and self.time_running:
 
-                    self.best_solution = best_TIME_solution
-                    self.time_running = False
-                    self.vei_running = False
-                    if not self.event.isSet():
-                        self.event.set()
-                    self.lock.release()
-                else:
-                    self.lock.release()
+                if (best_TIME_solution["vehicles"] < best_solution["vehicles"] or best_TIME_solution["length"] < best_solution["length"]):
 
-            self.pheromones_TIME = self.update_pheromones(self.best_solution, self.pheromones_TIME)
+                    # send to process
+                    best_solution = best_TIME_solution
+                    print("NEW_BEST_SOLUTION (TIME) (Working time: {} at {})".format(str(time.time() - start_time),
+                                                                              str(time.asctime())))
+
+                    queue.put(best_TIME_solution)
+                    vei_time_queue.put(best_TIME_solution)
 
 
+            self.pheromones_TIME = self.update_pheromones(best_solution, self.pheromones_TIME, best_solution)
 
     def count_customers(self, solution):
         customer_count = 0
@@ -437,10 +426,9 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
         else:
             return None
 
-
-    def initialize_pheromones(self, size):
+    def initialize_pheromones(self, size, best_solution):
         if self.tau0 is None:
-            self.tau0 = 1/(self.vrptw.size * self.best_solution["length"])
+            self.tau0 = 1/(self.vrptw.size * best_solution["length"])
 
         pheromones = np.zeros((size, size))
 
@@ -450,9 +438,9 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         return pheromones
 
-    def update_pheromones(self, solution, pheromones):
+    def update_pheromones(self, solution, pheromones, best_solution):
         for route in solution["routes"]:
             for i in range(0, len(route)-1):
-                pheromones[route[i]][route[i+1]] = (1-self.p)*pheromones[route[i]][route[i+1]] + self.p/self.best_solution["length"]
+                pheromones[route[i]][route[i+1]] = (1-self.p)*pheromones[route[i]][route[i+1]] + self.p/best_solution["length"]
 
         return pheromones
