@@ -86,7 +86,6 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             return fesible
 
         def get_next_location(pheromones):
-            print(pheromones)
             pher_x_atract_B = []
 
             for ct in feasible_cities:
@@ -174,7 +173,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
             # divide tour into list of single vehicle rides
             decoded_tour = decode_tour(tour)
-            # print(decoded_tour)
+
             tours_with_demands = calculate_demands(decoded_tour)
 
             # create list of non_visited sorted by delivery quantities (tuple (id, quantity))
@@ -191,24 +190,21 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             # print(tours_with_demands)
 
             for city_w_demand in nv_w_demands:
-                # print("CITY WITH DEMAND", city_w_demand)
+
                 posible_inserts = [] #  list of tuples (tour_id, insertion_point, distance)
 
                 for tour_id, t in enumerate(tours_with_demands):
-                    # TODO ROZKMINIĆ BUG "826" - coś nie tak pilnowaniem Load
+
                     if t[1] + city_w_demand[1] <= macs_ds.vehicle_capacity: # check if demand did not exceed vehicle_capacity
                         route = t[0].copy()
-                        # print("ROUTE", route)
                         for n, city in enumerate(t[0][1:], 1):
                             route.insert(n, city_w_demand[0])
-                            # print("THEORETICAL ROUTE", route, is_fesible(route))
                             if is_fesible(route):
                                 posible_inserts.append((tour_id, n, route_length(route)))
                             route.remove(city_w_demand[0])
-                # print("POSSIBLE_INSERTS", posible_inserts)
+
                 if posible_inserts:
                     best = min(posible_inserts, key=lambda x: x[2])
-                    # print("BEST", best)
                     tours_with_demands[best[0]][0].insert(best[1], city_w_demand[0])
                     cities_to_visit.remove(city_w_demand[0])
 
@@ -245,7 +241,6 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 else:
                     distance = max(1, distance)
 
-                # print("DISTANCE of city",city,":", distance, "(", delta_time ,"*", (macs_ds.time_windows[city][1] - current_time),")")
 
                 attractiveness[current_location][city] = 1.0/distance
 
@@ -256,14 +251,13 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             load = load + macs_ds.demands[next_location]
 
             cities_to_visit.remove(next_location)
-            # print("Next location:", next_location)
+
             if next_location in macs_ds.depo_ids:
                 current_time = 0
                 load = 0
 
             # local pheromone updating
-            if(current_location == 1 and next_location == 0):
-                print("Lowering 1 0 pheromones!")
+            if(current_location == 1 and next_location == 0):\
             pheromones[current_location][next_location] = \
                 ((1-self.p) * pheromones[current_location][next_location]) + (self.p*self.tau0)
 
@@ -281,7 +275,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
         else:
             feasible = True
 
-        if local_search and feasible and False:
+        if local_search and feasible:
             # print("BEFORE", solution)
             last_solution_length = solution["length"]
 
@@ -319,7 +313,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 best_VEI_solution = best_colony_solution
                 IN = [0] * macs_ds.size
 
-                print("CHECKING FISIBILITY OF (len{})".format(self.count_customers(best_VEI_solution)), best_VEI_solution)
+                print("CHECKING FEASIBILITY OF (len{})".format(self.count_customers(best_VEI_solution)), best_VEI_solution)
                 if check_solution_feasibility(self.vrptw, best_VEI_solution["routes"]):
                     queue.put(best_VEI_solution)
 
@@ -345,8 +339,8 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         while stop_time > time.time():
 
-            print("BEST SOLUTION:", best_solution)
-            print(macs_ds.depo_ids)
+            print("BEST SOLUTION V: {}, LEN: {}".format(best_solution["vehicles"], best_solution["length"]))
+
             kth_solutions = []
 
             for k in range(0, self.m):
@@ -372,8 +366,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
 
             self.pheromones_TIME = self.update_pheromones(best_solution, self.pheromones_TIME, best_solution)
-            print("1 0 TIME",self.pheromones_TIME[1][0])
-            print("0 92 TIME",self.pheromones_TIME[0][92])
+
 
     def count_customers(self, solution):
         customer_count = 0

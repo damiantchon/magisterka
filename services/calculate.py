@@ -702,29 +702,28 @@ def local_search_clean(vrptw, solution):
         return updated_solution
 
     # main loop classical
-    # for i in range(0, len(solution["routes"])-1):
-    #     for j in range(i+1, len(solution["routes"])):
-    #         departure_table = create_auxiliary_table(vrptw, solution["routes"])
-    #         # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
-    #         if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
-    #             solution["routes"][i], solution["routes"][j], _ = \
-    #                 local_search_single(solution["routes"][i], solution["routes"][j], departure_table)
-
-    # main loop 2
-
     for i in range(0, len(solution["routes"])-1):
-        solutions = []
-        departure_table = create_auxiliary_table(vrptw, solution["routes"])
         for j in range(i+1, len(solution["routes"])):
-            # departure_table = create_auxiliary_table(vrptw, solution["routes"])
+            departure_table = create_auxiliary_table(vrptw, solution["routes"])
             # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
             if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
-                solutions.append((i, j, local_search_single(solution["routes"][i], solution["routes"][j], departure_table)))
-        # print(solutions)
-        best = min(solutions, key=lambda item: item[2][2])
-        # print(best)
-        solution["routes"][best[0]] = best[2][0]
-        solution["routes"][best[1]] = best[2][1]
+                solution["routes"][i], solution["routes"][j], _ = \
+                    local_search_single(solution["routes"][i], solution["routes"][j], departure_table)
+
+    # main loop 2
+    # for i in range(0, len(solution["routes"])-1):
+    #     solutions = []
+    #     departure_table = create_auxiliary_table(vrptw, solution["routes"])
+    #     for j in range(i+1, len(solution["routes"])):
+    #         # departure_table = create_auxiliary_table(vrptw, solution["routes"])
+    #         # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
+    #         if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
+    #             solutions.append((i, j, local_search_single(solution["routes"][i], solution["routes"][j], departure_table)))
+    #     # print(solutions)
+    #     best = min(solutions, key=lambda item: item[2][2])
+    #     # print(best)
+    #     solution["routes"][best[0]] = best[2][0]
+    #     solution["routes"][best[1]] = best[2][1]
 
     # aktualizacja rozwiązania
     # print(update_solution(solution))

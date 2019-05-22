@@ -1,25 +1,32 @@
-import numpy as np
-import networkx as nx
-import matplotlib.pyplot as plt
-import cProfile
-import pandas as pd
 import os
 import sys
 import time
 import signal
+import random
+import numpy as np
+import networkx as nx
+import matplotlib.pyplot as plt
+import pandas as pd
 import multiprocessing as mp
-from queue import Full, Empty
-from itertools import chain
-import copy
+from queue import Empty
 
-from services.calculate import nearest_neighbors_vrptw, local_search_clean, routes_length, check_feasibility, create_auxiliary_table, check_solution_feasibility, run_2opt
-from VRPTW import Data, VRPTW, VRPTW_MACS_DS
+
+from services.calculate import nearest_neighbors_vrptw, routes_length
+from VRPTW import Data, VRPTW
 from ACO import MACS_VRPTW
 
 
 desired_width = 320
 pd.set_option('display.width', desired_width)
 np.set_printoptions(linewidth=desired_width)
+
+
+def get_spaced_colors(n):
+    max_value = 16581375  # 255**3
+    interval = int(max_value / n)
+    colors = [hex(I)[2:].zfill(6) for I in range(0, max_value, interval)]
+
+    return [(int(i[:2], 16)/255, int(i[2:4], 16)/255, int(i[4:], 16)/255) for i in colors]
 
 def log(string):
     file = open("log.txt", "a")
@@ -38,22 +45,46 @@ def update_solution(solution_to_update):
 
 def add_solution_to_graph(graph, solution):
 
-    for route in solution["routes"]:
-        for i in range(0, len(route)-1):
-            graph.add_edge(route[i], route[i + 1])
+    colors = get_spaced_colors(len(solution["routes"]))
+
+    for c, route in enumerate(solution["routes"]):
+        edgelist = []
+        for i in range(0, len(route) - 1):
+            edgelist.append((route[i], route[i + 1]))
+        print(colors[c])
+        graph.add_edges_from(edgelist, color=colors[c])
 
     return graph
 
+def draw_solution_to_graph(graph, pos, solution):
 
+    colors = get_spaced_colors(len(solution["routes"]))
+
+    for route in enumerate(solution["routes"]):
+        edgelist = []
+        for i in range(0, len(route) - 1):
+            edgelist.append((route[i], route[i+1]))
+
+        r = lambda: random.randint(0, 255)
+        color = '#%02X%02X%02X' % (r(),r(),r())
+
+        nx.draw_networkx_edges(G=graph, pos=pos, edgelist=edgelist, edge_color=color)
+
+
+    return graph
 if __name__ == '__main__':
 
     print(sys.argv)
 
-    log("Started working on {} solution.\n".format(str(sys.argv[1])))
+    file = str(sys.argv[1]) # source file with model
 
-    data = Data(str(sys.argv[1]))
+    work_time = int(sys.argv[2]) # algorithtm working time
 
-    vrptw = VRPTW(data, vehicle_capacity=1000)
+    log("Started working on {} solution.\n".format(str(file)))
+
+    data = Data(str(file))
+
+    vrptw = VRPTW(data, vehicle_capacity=200)
 
     pos = nx.get_node_attributes(vrptw.graph, 'coordinates')
     demands = nx.get_node_attributes(vrptw.graph, 'demands')
@@ -65,7 +96,6 @@ if __name__ == '__main__':
 
     best_solution = nearest_neighbors_vrptw(vrptw)
 
-    work_time = int(sys.argv[2])  # algorithtm working time
     start_time = time.time()
     stop_time = start_time + work_time
 
@@ -115,11 +145,20 @@ if __name__ == '__main__':
                     best_solution = new_best_solution
 
 
-    add_solution_to_graph(vrptw.graph, best_solution)
+
 
     nx.draw_networkx(vrptw.graph, pos=pos, nodelist=vrptw.get_depo_ids(), with_labels=True, node_color='r',
-                     node_size=300, font_color='k', font_size=8, labels=time_windows)
+                     node_size=300, font_color='k', font_size=8)
     nx.draw_networkx(vrptw.graph, pos=pos, nodelist=vrptw.get_clients_ids(), with_labels=True, node_color='k',
-                     node_size=100, font_color='r', font_size=8)
+                     node_size=100, font_color='white', font_size=8)
+
+    add_solution_to_graph(vrptw.graph, best_solution)
+
+    edges = vrptw.graph.edges()
+    colors = [vrptw.graph[u][v]['color'] for u, v in edges]
+
+    nx.draw_networkx_edges(vrptw.graph, pos=pos, edges=edges, edge_color=colors)
 
     plt.show()
+
+    # plt.savefig("result.png", bbox_inches='tight')

@@ -52,17 +52,6 @@ class VRPTW:
     def get_depo_ids(self):
         return [self.ids[0]]
 
-    # def duplicate_depo(self):  # Zakładając, że depo jest pierwszym rekordem w danych wejściowych.
-    #
-    #     self.size = self.size + 1
-    #
-    #     max_client_id = max(self.ids) + 1
-    #
-    #     self.ids.append(max_client_id)
-    #     self.coordinates.append(self.coordinates[0])
-    #     self.demands.append(self.demands[0])
-    #     self.time_windows.append(self.time_windows[0])
-    #     self.service_times.append(self.service_times[0])
 
 
 class VRPTW_MACS_DS:
@@ -124,10 +113,6 @@ class VRPTW_MACS_DS:
             new_array_2 = new_array_2.reshape((v-1, self.size))
 
             self.distances = np.vstack((self.distances, new_array_2))
-
-        # Distances added
-
-        # print(self.distances)
 
         self.graph = nx.Graph()
 
