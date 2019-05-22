@@ -21,7 +21,7 @@ def log(string):
 
 if __name__ == '__main__':
 
-    files = ["solomon/R1/"+f for f in listdir("solomon/R1") if isfile(join("solomon/R1", f))]
+    files = ["solomon/R2/"+f for f in listdir("solomon/R2") if isfile(join("solomon/R2", f))]
     # files += ["solomon/C1/" + f for f in listdir("solomon/C1") if isfile(join("solomon/C1", f))]
     files.sort()
     print(files)
@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
         data = Data(file)
 
-        vrptw = VRPTW(data, vehicle_capacity=200)
+        vrptw = VRPTW(data, vehicle_capacity=1000)
 
         pos = nx.get_node_attributes(vrptw.graph, 'coordinates')
         demands = nx.get_node_attributes(vrptw.graph, 'demands')

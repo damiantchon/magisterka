@@ -3,6 +3,12 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import cProfile
 import pandas as pd
+import os
+import sys
+import time
+import signal
+import multiprocessing as mp
+from queue import Full, Empty
 from itertools import chain
 import copy
 
@@ -15,6 +21,10 @@ desired_width = 320
 pd.set_option('display.width', desired_width)
 np.set_printoptions(linewidth=desired_width)
 
+def log(string):
+    file = open("log.txt", "a")
+    file.write(string)
+    file.close()
 
 def update_solution(solution_to_update):
 
@@ -37,7 +47,11 @@ def add_solution_to_graph(graph, solution):
 
 if __name__ == '__main__':
 
-    data = Data("solomon/R1/R103_100")
+    print(sys.argv)
+
+    log("Started working on {} solution.\n".format(str(sys.argv[1])))
+
+    data = Data(str(sys.argv[1]))
 
     vrptw = VRPTW(data, vehicle_capacity=1000)
 
@@ -49,87 +63,59 @@ if __name__ == '__main__':
 
     print(macs.vrptw.distances)
 
-    # nn_solution = macs.run()
+    best_solution = nearest_neighbors_vrptw(vrptw)
 
-    #TODO Sprawdzić czemu wyszło z local search.
-    # nn_solution = {'length': 1420.53, 'vehicles': 4, 'routes': [[0, 5, 45, 83, 82, 36, 47, 64, 11, 62, 19, 88, 7, 18, 8, 90, 49, 46, 10, 20, 66, 35, 32, 70, 1, 0], [0, 63, 65, 33, 29, 12, 21, 73, 67, 40, 22, 87, 53, 41, 57, 43, 37, 97, 13, 89, 60, 48, 17, 91, 100, 93, 0], [0, 95, 42, 14, 92, 59, 98, 2, 72, 39, 23, 75, 15, 44, 61, 16, 38, 86, 99, 84, 85, 94, 6, 96, 26, 56, 74, 58, 0], [0, 28, 27, 52, 69, 31, 30, 71, 76, 79, 81, 51, 9, 78, 34, 3, 50, 68, 54, 4, 55, 25, 24, 77, 80, 0]]}
-    # nn_solution = {'length': 1536.32, 'vehicles': 4, 'routes': [[0, 72, 39, 95, 2, 28, 29, 12, 21, 75, 23, 67, 73, 53, 40, 22, 41, 57, 43, 37, 97, 96, 13, 91, 17, 93, 100, 58, 89, 0], [0, 33, 65, 63, 64, 11, 19, 62, 88, 7, 18, 8, 90, 49, 46, 26, 54, 56, 74, 55, 25, 77, 80, 0], [0, 42, 14, 92, 59, 5, 83, 45, 47, 36, 82, 52, 69, 31, 30, 71, 76, 79, 81, 51, 9, 78, 34, 3, 50, 10, 66, 20, 32, 35, 68, 24, 4, 1, 70, 0], [0, 27, 98, 44, 15, 38, 16, 99, 61, 86, 85, 87, 94, 6, 84, 60, 48, 0]]}
+    work_time = int(sys.argv[2])  # algorithtm working time
+    start_time = time.time()
+    stop_time = start_time + work_time
 
+    while stop_time >= time.time():
 
-    # Optimal R201_100
-    # nn_solution = {'length': 1252.37, 'vehicles': 4, 'routes': [[0, 5, 83, 45, 82, 47, 36, 64, 11, 19, 62, 7, 88, 90, 18, 84, 8, 49, 46, 48, 60, 17, 91, 100, 93, 89, 0], [0, 2, 72, 39, 75, 23, 67, 21, 40, 73, 41, 22, 87, 57, 43, 37, 97, 96, 13, 58, 0],[0, 95, 59, 92, 42, 15 ,14, 98, 61, 16, 44, 38, 86, 85, 99, 6, 94, 53, 26, 54, 56, 74, 4, 55, 25, 24, 80, 0], [0, 33, 65, 63, 31, 69, 52, 27, 28, 12, 29, 76, 30, 71, 9, 51, 81, 79, 78, 34, 3, 50, 20, 10, 32, 66, 35, 68, 77, 1, 70, 0]]}
+        v = best_solution["vehicles"]
 
+        queue = mp.Queue()
+        vei_time_queue = mp.Queue()
 
+        p_vei = mp.Process(target=macs.ACS_VEI, args=(v, best_solution, stop_time, queue, vei_time_queue))
+        p_time = mp.Process(target=macs.ACS_TIME,
+                            args=(v + 1, best_solution, start_time, stop_time, queue, vei_time_queue))
 
+        p_vei.start()
+        p_time.start()
 
+        solution_with_less_vehicles_found = False
 
-    nn_solution = {'length': 1880.468130112817, 'vehicles': 15, 'routes': [[0, 93, 5, 75, 2, 1, 99, 100, 97, 95, 98, 7, 3, 4, 89, 91, 88, 86, 83, 82, 77, 87, 90, 0], [0, 20, 22, 24, 27, 29, 6, 32, 33, 34, 28, 26, 23, 25, 9, 11, 10, 8, 21, 96, 0], [0, 48, 0], [0, 67, 63, 62, 66, 69, 68, 65, 49, 55, 57, 40, 44, 46, 45, 42, 41, 78, 0], [0, 43, 81, 0], [0, 47, 80, 79, 0], [0, 74, 72, 61, 64, 54, 59, 51, 50, 52, 13, 0], [0, 30, 36, 18, 17, 73, 0], [0, 84, 85, 76, 71, 70, 0], [0, 31, 35, 37, 38, 39, 19, 15, 0], [0, 12, 0], [0, 14, 0], [0, 16, 0], [0, 94, 53, 56, 58, 60, 0], [0, 92, 0]]}
+        while not solution_with_less_vehicles_found and stop_time >= time.time():
 
+            new_best_solution = None
+            got_new_solution = False
 
+            while not got_new_solution and stop_time >= time.time():
+                try:
+                    new_best_solution = queue.get(timeout=2)
+                except Empty:
+                    pass
+                if new_best_solution:
+                    got_new_solution = True
 
-    # nn_solution = local_search_clean(vrptw, nn_solution)
-    # nn_solution = local_search_clean(vrptw, nn_solution)
-    # nn_solution = local_search_clean(vrptw, nn_solution)
-    # nn_solution = local_search_clean(vrptw, nn_solution)
+            if new_best_solution:
+                log("NEW_BEST_SOLUTION OF {} (Working time: {} at {})".format(file, str(time.time() - start_time),
+                                                                              str(time.asctime())))
+                log(str(new_best_solution) + "\n")
+                if new_best_solution["vehicles"] < v:
 
-    # TODO Feasibility
+                    os.kill(p_vei.pid, signal.SIGTERM)
+                    os.kill(p_time.pid, signal.SIGTERM)
+                    p_vei.join()
+                    p_time.join()
+                    best_solution = new_best_solution
+                    solution_with_less_vehicles_found = True
 
-
-    # nn_solution = nearest_neighbors_vrptw(vrptw)
-    # # #TODO Profiler
-    # nn_solution = {'length': 1651.7, 'vehicles': 4, 'routes': [[0, 63, 65, 28, 2, 15, 21, 75, 98, 61, 44, 38, 16, 86, 99, 85, 22, 41, 57, 43, 37, 97, 96, 91, 13, 58, 0], [0, 72, 39, 23, 71, 30, 51, 79, 78, 81, 9, 90, 49, 46, 10, 20, 66, 32, 1, 68, 35, 70, 89, 93, 100, 0], [0, 42, 14, 92, 59, 95, 5, 45, 83, 82, 36, 47, 64, 11, 62, 19, 7, 88, 18, 6, 87, 94, 3, 34, 50, 26, 56, 55, 54, 74, 4, 25, 24, 80, 77, 0], [0, 33, 69, 31, 52, 27, 12, 29, 76, 67, 73, 40, 53, 8, 84, 60, 17, 48, 0]]}
-    cProfile.run('local_search_clean(vrptw, nn_solution)')
-    #
-    # nn_solution = {'length': 1651.7, 'vehicles': 4, 'routes': [[0, 63, 65, 28, 2, 15, 21, 75, 98, 61, 44, 38, 16, 86, 99, 85, 22, 41, 57, 43, 37, 97, 96, 91, 13, 58, 0], [0, 72, 39, 23, 71, 30, 51, 79, 78, 81, 9, 90, 49, 46, 10, 20, 66, 32, 1, 68, 35, 70, 89, 93, 100, 0], [0, 42, 14, 92, 59, 95, 5, 45, 83, 82, 36, 47, 64, 11, 62, 19, 7, 88, 18, 6, 87, 94, 3, 34, 50, 26, 56, 55, 54, 74, 4, 25, 24, 80, 77, 0], [0, 33, 69, 31, 52, 27, 12, 29, 76, 67, 73, 40, 53, 8, 84, 60, 17, 48, 0]]}
-    # cProfile.run('local_search_clean(vrptw, nn_solution)')
-    # macs.run()
-    # nn_solution = nearest_neighbors_vrptw(vrptw)
-    # nn_solution = local_search_clean(vrptw, nn_solution)
-    # table = create_auxiliary_dict(vrptw, nn_solution["routes"])
-    # print(table)
-    # nn_solution["routes"] = [[0, 1, 6, 3, 4, 0], [0, 5, 2, 7, 8, 0]]
-    # nn_solution["length"] = routes_length(vrptw, nn_solution["routes"])
-    #
-    # print("Doin local search:")
-    # first_solution = copy.deepcopy(nn_solution)
-    #
-    #
-    # # print(check_feasibility(vrptw, nn_solution["routes"]))
-    # # print(nn_solution)
-    #
-    # nn_solution = local_search_clean(vrptw, nn_solution)
-    # # print(check_feasibility(vrptw, nn_solution["routes"]))
-    # print(nn_solution)
-
+                else:
+                    best_solution = new_best_solution
 
 
-
-    # nn_solution = update_solution(nn_solution)
-    # print(nn_solution)
-    #
-    # print("Feasible:", check_feasibility(vrptw, nn_solution["routes"]))
-    # for ajdi, route in enumerate(nn_solution["routes"]):
-    #     route = run_2opt(vrptw, route)
-    #     nn_solution["routes"][ajdi] = route
-    # nn_solution = update_solution(nn_solution)
-    # print(nn_solution)
-    # print("Feasible:", check_solution_feasibility(vrptw, nn_solution["routes"]))
-    #
-    # print(routes_length(vrptw, [[0, 98, 94, 95, 96, 92, 93, 0]]))
-    # print(routes_length(vrptw, [[0, 98, 96, 95, 94, 92, 93, 0]]))
-
-
-
-
-
-    # nn_solution = local_search_clean(vrptw, nn_solution)
-    # print(nn_solution)
-
-    # while [0, 57, 55, 54, 53, 56, 58, 60, 59, 68, 69, 0] not in nn_solution["routes"]:
-    #     nn_solution = local_search_clean(vrptw, nn_solution)
-
-
-    add_solution_to_graph(vrptw.graph, nn_solution)
+    add_solution_to_graph(vrptw.graph, best_solution)
 
     nx.draw_networkx(vrptw.graph, pos=pos, nodelist=vrptw.get_depo_ids(), with_labels=True, node_color='r',
                      node_size=300, font_color='k', font_size=8, labels=time_windows)

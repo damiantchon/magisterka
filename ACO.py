@@ -86,7 +86,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             return fesible
 
         def get_next_location(pheromones):
-
+            print(pheromones)
             pher_x_atract_B = []
 
             for ct in feasible_cities:
@@ -97,13 +97,14 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             if random.random() < self.q0: # exploitation
                 return max(pher_x_atract_B ,key=lambda x:x[1])[0]
 
-            else:
+            else:   # exploration
                 cities_and_probabilities = []
                 for elem in pher_x_atract_B:
                     cities_and_probabilities.append((elem[0], elem[1]/pher_x_atract_B_sum))
 
                 cities = [i[0] for i in cities_and_probabilities]
                 probabilities = [i[1] for i in cities_and_probabilities]
+
                 return np.random.choice(a=cities, p=probabilities)
 
         def insertion_procedure(tour, non_visited):
@@ -261,6 +262,8 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 load = 0
 
             # local pheromone updating
+            if(current_location == 1 and next_location == 0):
+                print("Lowering 1 0 pheromones!")
             pheromones[current_location][next_location] = \
                 ((1-self.p) * pheromones[current_location][next_location]) + (self.p*self.tau0)
 
@@ -271,8 +274,6 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             else:
                 feasible_cities = get_fesible_cities(with_depos=True)
 
-        #TODO insertion procedure
-        # print(tour)
         solution = insertion_procedure(tour=tour, non_visited=cities_to_visit)
 
         if list(set(cities_to_visit) - set(macs_ds.depo_ids)):
@@ -280,7 +281,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
         else:
             feasible = True
 
-        if local_search and feasible:
+        if local_search and feasible and False:
             # print("BEFORE", solution)
             last_solution_length = solution["length"]
 
@@ -371,6 +372,8 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
 
             self.pheromones_TIME = self.update_pheromones(best_solution, self.pheromones_TIME, best_solution)
+            print("1 0 TIME",self.pheromones_TIME[1][0])
+            print("0 92 TIME",self.pheromones_TIME[0][92])
 
     def count_customers(self, solution):
         customer_count = 0

@@ -381,6 +381,7 @@ def check_feasibility_bis_x(vrptw, edges, d_table, first, second):
 
 
 def create_auxiliary_table(vrptw, routes):
+
     table = []
 
     table = [[{} for i in range(0, vrptw.size)] for j in range(0, vrptw.size)]
@@ -422,7 +423,6 @@ def create_auxiliary_table(vrptw, routes):
             basic_lateness = windows[r[i + 1]][1] - windows[r[i + 1]][0]
 
             route_latenesses.append(basic_lateness)  # (1, 5)
-            # print("Basic lateness:", basic_lateness)
 
 
             for j in range(i + 1, len(route)-1):
@@ -523,13 +523,12 @@ def run_2opt(vrptw, route):
 def local_search_clean(vrptw, solution):
 
     def calculate_delta(X1i, X2i, Y1i, Y2i, r1, r2):
-        delta = 0
 
         dist = vrptw.distances
 
         if X1i == Y1i and X2i == Y2i:
             delta = dist[r1[X1i]][r2[X2i + 1]] + dist[r2[X2i]][r1[X1i + 1]] - \
-                    (dist[r1[X1i]][r1[X1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
+                (dist[r1[X1i]][r1[X1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
 
         elif X1i != Y1i and X2i != Y2i:
             delta = dist[r1[X1i]][r2[X2i + 1]] + dist[r2[Y2i]][r1[Y1i + 1]] + dist[r2[X2i]][r1[X1i + 1]] + dist[r1[Y1i]][r2[Y2i + 1]] - \
@@ -544,6 +543,37 @@ def local_search_clean(vrptw, solution):
                     (dist[r1[X1i]][r1[X1i + 1]] + dist[r1[Y1i]][r1[Y1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
 
         return delta
+
+    def calculate_delta2(X1i, X2i, Y1i, Y2i, r1, r2):
+
+        dist = vrptw.distances
+
+        if X1i == Y1i:
+            if X2i == Y2i:
+                delta = dist[r1[X1i]][r2[X2i + 1]] + dist[r2[X2i]][r1[X1i + 1]] - \
+                    (dist[r1[X1i]][r1[X1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
+            else:
+                delta = dist[r2[X2i]][r2[Y2i + 1]] + dist[r1[X1i]][r2[X2i + 1]] + dist[r2[Y2i]][r1[Y1i + 1]] - \
+                        (dist[r2[X2i]][r2[X2i + 1]] + dist[r2[Y2i]][r2[Y2i + 1]] + dist[r1[X1i]][r1[X1i + 1]])
+
+        else:
+            if X2i == Y2i:
+                delta = dist[r1[X1i]][r1[Y1i + 1]] + dist[r2[X2i]][r1[X1i + 1]] + dist[r1[Y1i]][r2[Y2i + 1]] - \
+                        (dist[r1[X1i]][r1[X1i + 1]] + dist[r1[Y1i]][r1[Y1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
+            else:
+                delta = dist[r1[X1i]][r2[X2i + 1]] + dist[r2[Y2i]][r1[Y1i + 1]] + dist[r2[X2i]][r1[X1i + 1]] + dist[r1[Y1i]][r2[Y2i + 1]] - \
+                        (dist[r1[X1i]][r1[X1i + 1]] + dist[r1[Y1i]][r1[Y1i + 1]] + dist[r2[X2i]][r2[X2i + 1]] + dist[r2[Y2i]][r2[Y2i + 1]])
+
+
+        return delta
+
+    def c_d_equal(X1i, X2i, Y1i, Y2i, r1, r2):
+
+        dist = vrptw.distances
+
+        return dist[r1[X1i]][r2[X2i + 1]] + dist[r2[X2i]][r1[X1i + 1]] - \
+                (dist[r1[X1i]][r1[X1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
+
 
     def swap_edges(route1, route2, X1pi, X2pi, Y1pi, Y2pi):
 
@@ -566,8 +596,8 @@ def local_search_clean(vrptw, solution):
         first_best = first_route
         second_best = second_route
 
-        global best_len
-        best_len = 0 #routes_length(vrptw, [first_route, second_route])
+        global best_delta
+        best_delta = 0 #routes_length(vrptw, [first_route, second_route])
 
 
         for X1_index, X1 in enumerate(first_route[:-1]):
@@ -587,18 +617,15 @@ def local_search_clean(vrptw, solution):
                         if Y2_index >= X2_index+6:
                             break
 
-
-
-
                         if X1_index == Y1_index and X2_index == Y2_index:
 
                             if check_feasibility_bis_x(vrptw, edges, d_table, first_route, second_route) is False:
                                 break
                             else:
-                                pass
+                                is_feasible = True
 
-                        if X2_index != Y2_index:
-                            # print(last_y2)
+                        elif X2_index != Y2_index:
+
                             if last_y2 is None:
 
                                 is_feasible, last_y2 = check_feasibility_bis(vrptw=vrptw, last_y2=None, d_table=d_table, edges=edges, first=first_route, second=second_route)
@@ -610,19 +637,25 @@ def local_search_clean(vrptw, solution):
                         else:
                             is_feasible = True
 
+                        delta = calculate_delta2(X1_index, X2_index, Y1_index, Y2_index, r1=first_route,
+                                                r2=second_route)
+
+                        # dlugosci_Y2.append(delta)
+                        # if len(dlugosci_Y2) == 3:
+                        #     if dlugosci_Y2[0] < dlugosci_Y2[1] < dlugosci_Y2[2]:
+                        #         dlugosci_Y2.clear()
+                        #         break
+                        #     else:
+                        #         dlugosci_Y2.pop(0)
+
                         if not is_feasible:
                             break
 
+                        if delta < best_X2:
+                            best_X2 = delta
 
-                        swaperooni_len = calculate_delta(X1_index,X2_index,Y1_index,Y2_index,r1=first_route,r2=second_route)
+                        if delta < best_delta:
 
-                        if swaperooni_len < best_X2:
-                            best_X2 = swaperooni_len
-
-
-                        if swaperooni_len < best_len:
-
-                            # swaperooni
                             if X1_index == Y1_index and X2_index == Y2_index:
 
                                 temp = first_route[:X1_index + 1] + second_route[Y2_index + 1:]
@@ -638,16 +671,24 @@ def local_search_clean(vrptw, solution):
 
                             if check_feasibility_prime(vrptw, temp_second, (X2_index - 1, X2_index), d_table):
 
-                                best_len = swaperooni_len
+                                best_delta = delta
 
                                 first_best = temp_first
 
                                 second_best = temp_second
 
+                # dlugosci_X2.append(best_X2)
+                # if len(dlugosci_X2) == 3:
+                #     if dlugosci_X2[0] < dlugosci_X2[1] < dlugosci_X2[2]:
+                #         dlugosci_X2.clear()
+                #         break
+                #     else:
+                #         dlugosci_X2.pop(0)
+
         first_best = run_2opt(vrptw, first_best)
         second_best = run_2opt(vrptw, second_best)
 
-        return first_best, second_best
+        return first_best, second_best, best_delta
 
     def update_solution(solution_to_update):
 
@@ -660,17 +701,33 @@ def local_search_clean(vrptw, solution):
 
         return updated_solution
 
-    # main loop
+    # main loop classical
+    # for i in range(0, len(solution["routes"])-1):
+    #     for j in range(i+1, len(solution["routes"])):
+    #         departure_table = create_auxiliary_table(vrptw, solution["routes"])
+    #         # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
+    #         if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
+    #             solution["routes"][i], solution["routes"][j], _ = \
+    #                 local_search_single(solution["routes"][i], solution["routes"][j], departure_table)
+
+    # main loop 2
+
     for i in range(0, len(solution["routes"])-1):
+        solutions = []
+        departure_table = create_auxiliary_table(vrptw, solution["routes"])
         for j in range(i+1, len(solution["routes"])):
-            departure_table = create_auxiliary_table(vrptw, solution["routes"])
+            # departure_table = create_auxiliary_table(vrptw, solution["routes"])
             # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
             if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
-                solution["routes"][i], solution["routes"][j] = \
-                    local_search_single(solution["routes"][i], solution["routes"][j], departure_table)
+                solutions.append((i, j, local_search_single(solution["routes"][i], solution["routes"][j], departure_table)))
+        # print(solutions)
+        best = min(solutions, key=lambda item: item[2][2])
+        # print(best)
+        solution["routes"][best[0]] = best[2][0]
+        solution["routes"][best[1]] = best[2][1]
 
     # aktualizacja rozwiązania
-    print(update_solution(solution))
+    # print(update_solution(solution))
     return update_solution(solution)
 
 
