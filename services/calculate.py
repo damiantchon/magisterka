@@ -1,5 +1,5 @@
 from scipy.spatial import distance
-
+import copy
 
 def manhattan_distance(x, y):
     return sum(abs(a-b) for a,b in zip(x,y))
@@ -380,6 +380,78 @@ def check_feasibility_bis_x(vrptw, edges, d_table, first, second):
     return feasible
 
 
+def update_auxiliary_table(vrptw, routes, t):
+
+    for route in routes:
+        time_a = 0
+        time_b = 0
+
+        load_a = 0
+        load_b = 0
+
+        for i in range(0, len(route) - 1):
+            start = route[i]
+            stop = route[i + 1]
+
+            # time and load
+            if start == 0:
+                time_a = 0
+            else:
+                time_a = max(time_a + vrptw.distances[route[i - 1]][start], vrptw.time_windows[start][0]) + \
+                         vrptw.service_times[start]
+            time_b = max(time_b + vrptw.distances[start][stop], vrptw.time_windows[stop][0]) + vrptw.service_times[stop]
+            load_a = load_a + vrptw.demands[start]
+            load_b = load_b + vrptw.demands[stop]
+            t[start][stop] = {"time_a": time_a, "time_b": time_b, "load_a": load_a, "load_b": load_b}
+
+            # maximum lateness
+            route_latenesses = []
+
+            windows = vrptw.time_windows
+            services = vrptw.service_times
+            distances = vrptw.distances
+
+            r = route
+
+            l_time = 0
+            basic_lateness = 0
+
+            l_time = windows[r[i + 1]][1]  # 15
+            basic_lateness = windows[r[i + 1]][1] - windows[r[i + 1]][0]
+
+            route_latenesses.append(basic_lateness)  # (1, 5)
+
+            for j in range(i + 1, len(route) - 1):
+                l_time += services[r[j]] + distances[r[j]][r[j + 1]]
+
+                route_latenesses.append(basic_lateness + (windows[r[j + 1]][1] - l_time))
+
+            t[start][stop]["lateness"] = min(route_latenesses)
+
+        # fill load_to_go
+
+        load_to_go_a = 0
+        load_to_go_b = 0
+
+        t[route[len(route) - 2]][route[len(route) - 1]]["load_to_go_a"] = 0
+        t[route[len(route) - 2]][route[len(route) - 1]]["load_to_go_b"] = 0
+
+        for i in reversed(range(0, len(route) - 2)):
+            start = route[i]
+            stop = route[i + 1]
+
+            # "load to go" (how much more load do we need to finish this road from given city)
+            load_to_go_a = load_to_go_a + vrptw.demands[route[i + 1]]
+
+            load_to_go_b = load_to_go_b + vrptw.demands[route[i + 2]]
+
+            t[start][stop]["load_to_go_a"] = load_to_go_a
+            t[start][stop]["load_to_go_b"] = load_to_go_b
+
+    # print(table)
+    return t
+
+
 def create_auxiliary_table(vrptw, routes):
 
     table = []
@@ -464,22 +536,6 @@ def create_auxiliary_table(vrptw, routes):
     return table
 
 
-def update_departure_table(vrptw, routes, t):
-
-    for route in routes:
-        time = 0
-        load = 0
-        for i in range(0, len(route)-1):
-            start = route[i]
-            stop = route[i+1]
-
-            time = max(time + vrptw.distances[start][stop], vrptw.time_windows[stop][0]) + vrptw.service_times[stop]
-            load = load + vrptw.demands[stop]
-            t[start][stop] = (time, load)
-
-    return t
-
-
 def routes_length(vrptw, routes):
     length = 0
     for route in routes:
@@ -489,17 +545,20 @@ def routes_length(vrptw, routes):
     return round(length, 2) # int(length*(10**2))/(10.**2)
 
 
-def swap_2opt(route, i, k):
+def swap_2opt(route, i, k, reverse):
     assert i >= 0 and i < (len(route) - 1)
     assert k > i and k < len(route)
     new_route = route[0:i]
-    new_route.extend(reversed(route[i:k + 1]))
+    if reverse:
+        new_route.extend(reversed(route[i:k + 1]))
+    else:
+        new_route.extend(route[i:k + 1])
     new_route.extend(route[k+1:])
     assert len(new_route) == len(route)
     return new_route
 
 
-def run_2opt(vrptw, route):
+def run_2opt(vrptw, route, reverse):
     improvement = True
     best_route = route
     best_distance = routes_length(vrptw, [route])
@@ -507,7 +566,7 @@ def run_2opt(vrptw, route):
         improvement = False
         for i in range(1, len(best_route)):
             for k in range(i+1, min(i+5, len(best_route))-1):
-                new_route = swap_2opt(best_route, i, k)
+                new_route = swap_2opt(best_route, i, k, reverse)
                 new_distance = routes_length(vrptw, [new_route])
                 if new_distance < best_distance and two_opt_feasibility(vrptw, new_route):
                     best_distance = new_distance
@@ -518,6 +577,19 @@ def run_2opt(vrptw, route):
                 break
     assert len(best_route) == len(route)
     return best_route
+
+def calculate_center_of_mass(vrptw, solution):
+    sum_of_x = 0
+    sum_of_y = 0
+
+    for i in range(len(solution)-1):
+
+        sum_of_x += vrptw.coordinates[solution[i]][0]
+        sum_of_y += vrptw.coordinates[solution[i]][1]
+
+    center_of_mass = (sum_of_x/len(solution), sum_of_y/len(solution))
+
+    return center_of_mass
 
 
 def local_search_clean(vrptw, solution):
@@ -564,15 +636,29 @@ def local_search_clean(vrptw, solution):
                 delta = dist[r1[X1i]][r2[X2i + 1]] + dist[r2[Y2i]][r1[Y1i + 1]] + dist[r2[X2i]][r1[X1i + 1]] + dist[r1[Y1i]][r2[Y2i + 1]] - \
                         (dist[r1[X1i]][r1[X1i + 1]] + dist[r1[Y1i]][r1[Y1i + 1]] + dist[r2[X2i]][r2[X2i + 1]] + dist[r2[Y2i]][r2[Y2i + 1]])
 
-
         return delta
 
-    def c_d_equal(X1i, X2i, Y1i, Y2i, r1, r2):
+    def calculate_delta3(X1, X1p, X2, X2p, Y1, Y1p, Y2, Y2p) :
 
         dist = vrptw.distances
 
-        return dist[r1[X1i]][r2[X2i + 1]] + dist[r2[X2i]][r1[X1i + 1]] - \
-                (dist[r1[X1i]][r1[X1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
+        if X1 == Y1:
+            if X2 == Y2:
+                delta = dist[X1][X2p] + dist[X2][X1p] - \
+                    (dist[X1][X1p] + dist[X2][X2p])
+            else:
+                delta = dist[X2][Y2p] + dist[X1][X2p] + dist[Y2][Y1p] - \
+                        (dist[X2][X2p] + dist[Y2][Y2p] + dist[X1][X1p])
+
+        else:
+            if X2 == Y2:
+                delta = dist[X1][Y1p] + dist[X2][X1p] + dist[Y1][Y2p] - \
+                        (dist[X1][X1p] + dist[Y1][Y1p] + dist[X2][X2p])
+            else:
+                delta = dist[X1][X2p] + dist[Y2][Y1p] + dist[X2][X1p] + dist[Y1][Y2p] - \
+                        (dist[X1][X1p] + dist[Y1][Y1p] + dist[X2][X2p] + dist[Y2][Y2p])
+
+        return delta
 
 
     def swap_edges(route1, route2, X1pi, X2pi, Y1pi, Y2pi):
@@ -590,6 +676,26 @@ def local_search_clean(vrptw, solution):
 
         return temp_r1, temp_r2
 
+    def prepeare_for_ls(vrptw, solutions, current):
+
+        solutions = copy.copy(solutions)
+        solutions = list(enumerate(solutions))
+        solutions = [x for x in solutions if x[1] is not current ]
+
+        current_CoM = calculate_center_of_mass(vrptw, current)
+
+        CoMs = []
+        for solution in solutions:
+            CoMs.append(calculate_center_of_mass(vrptw, solution[1]))
+
+        # print(list(enumerate(solutions)))
+
+        zipped = list(zip(solutions, CoMs))
+        sorted_zipped = sorted(zipped, key=lambda x: euclidean_distance(current_CoM, x[1]))
+        sorted_unzipped = (list(zip(*list(zip(*sorted_zipped))[0])))
+
+        return sorted_unzipped[0], sorted_unzipped[1]
+
     def local_search_single(first_route, second_route, d_table):
 
 
@@ -599,19 +705,24 @@ def local_search_clean(vrptw, solution):
         global best_delta
         best_delta = 0 #routes_length(vrptw, [first_route, second_route])
 
-
         for X1_index, X1 in enumerate(first_route[:-1]):
+            X1p = first_route[X1_index + 1]
             dlugosci_X2 = []
             for X2_index, X2 in enumerate(second_route[:-1]):
+                X2p = second_route[X2_index + 1]
                 best_X2 = 999999999999
                 for Y1_index, Y1 in enumerate(first_route[X1_index:-1], X1_index):
+                    Y1p = first_route[Y1_index + 1]
                     last_y2 = None
+
                     dlugosci_Y2 = []
 
                     if Y1_index >= X1_index+6:
                         break
 
                     for Y2_index, Y2 in enumerate(second_route[X2_index:-1], X2_index):
+                        Y2p = second_route[Y2_index + 1]
+
                         edges = {"X1": X1_index, "Y1": Y1_index, "X2": X2_index, "Y2": Y2_index}
 
                         if Y2_index >= X2_index+6:
@@ -637,8 +748,6 @@ def local_search_clean(vrptw, solution):
                         else:
                             is_feasible = True
 
-                        delta = calculate_delta2(X1_index, X2_index, Y1_index, Y2_index, r1=first_route,
-                                                r2=second_route)
 
                         # dlugosci_Y2.append(delta)
                         # if len(dlugosci_Y2) == 3:
@@ -650,6 +759,11 @@ def local_search_clean(vrptw, solution):
 
                         if not is_feasible:
                             break
+
+                        # delta = calculate_delta2(X1_index, X2_index, Y1_index, Y2_index, r1=first_route,
+                        #                          r2=second_route)
+
+                        delta = calculate_delta3(X1, X1p, X2, X2p, Y1, Y1p, Y2, Y2p)
 
                         if delta < best_X2:
                             best_X2 = delta
@@ -685,8 +799,11 @@ def local_search_clean(vrptw, solution):
                 #     else:
                 #         dlugosci_X2.pop(0)
 
-        first_best = run_2opt(vrptw, first_best)
-        second_best = run_2opt(vrptw, second_best)
+        first_best = run_2opt(vrptw, first_best, reverse=True)
+        second_best = run_2opt(vrptw, second_best, reverse=True)
+
+        first_best = run_2opt(vrptw, first_best, reverse=False)
+        second_best = run_2opt(vrptw, second_best, reverse=False)
 
         return first_best, second_best, best_delta
 
@@ -701,32 +818,46 @@ def local_search_clean(vrptw, solution):
 
         return updated_solution
 
-    # main loop classical
-    for i in range(0, len(solution["routes"])-1):
-        for j in range(i+1, len(solution["routes"])):
-            departure_table = create_auxiliary_table(vrptw, solution["routes"])
-            # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
-            if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
-                solution["routes"][i], solution["routes"][j], _ = \
-                    local_search_single(solution["routes"][i], solution["routes"][j], departure_table)
+    departure_table = create_auxiliary_table(vrptw, solution["routes"])
 
-    # main loop 2
     # for i in range(0, len(solution["routes"])-1):
-    #     solutions = []
-    #     departure_table = create_auxiliary_table(vrptw, solution["routes"])
     #     for j in range(i+1, len(solution["routes"])):
-    #         # departure_table = create_auxiliary_table(vrptw, solution["routes"])
     #         # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
     #         if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
-    #             solutions.append((i, j, local_search_single(solution["routes"][i], solution["routes"][j], departure_table)))
-    #     # print(solutions)
-    #     best = min(solutions, key=lambda item: item[2][2])
-    #     # print(best)
-    #     solution["routes"][best[0]] = best[2][0]
-    #     solution["routes"][best[1]] = best[2][1]
+    #             solution["routes"][i], solution["routes"][j], _ = \
+    #                 local_search_single(solution["routes"][i], solution["routes"][j], departure_table)
+    #             departure_table = update_auxiliary_table(vrptw, [solution["routes"][i], solution["routes"][j]], departure_table)
+
+
+    # Ze środkiem ciężkości
+    # for i in range(0, len(solution["routes"])-1):
+    #     if(solution["routes"][i] is not [0, 0]):
+    #         order, sol_sorted_by_CoM = prepeare_for_ls(vrptw, solution["routes"], solution["routes"][i])
+    #         for j in range(0, len(sol_sorted_by_CoM)):
+    #             # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
+    #             if  solution["routes"][j] is not [0, 0]:
+    #                 solution["routes"][i], solution["routes"][order[j]], _ = \
+    #                     local_search_single(solution["routes"][i], solution["routes"][order[j]], departure_table)
+    #                 departure_table = update_auxiliary_table(vrptw, [solution["routes"][i], solution["routes"][order[j]]], departure_table)
+
+    # # main loop 2
+    departure_table = create_auxiliary_table(vrptw, solution["routes"])
+    for i in range(0, len(solution["routes"])-1):
+        solutions = []
+        for j in range(i+1, len(solution["routes"])):
+            # departure_table = create_auxiliary_table(vrptw, solution["routes"])
+            # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
+            if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
+                solutions.append((i, j, local_search_single(solution["routes"][i], solution["routes"][j], departure_table)))
+        # print(solutions)
+        best = min(solutions, key=lambda item: item[2][2])
+        # print(best)
+        solution["routes"][best[0]] = best[2][0]
+        solution["routes"][best[1]] = best[2][1]
+        departure_table = update_auxiliary_table(vrptw, [solution["routes"][best[0]], solution["routes"][best[1]]], departure_table)
 
     # aktualizacja rozwiązania
-    # print(update_solution(solution))
+    print(update_solution(solution))
     return update_solution(solution)
 
 

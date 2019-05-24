@@ -21,8 +21,8 @@ def log(string):
 
 if __name__ == '__main__':
 
-    # files = ["solomon/R1/"+f for f in listdir("solomon/R1") if isfile(join("solomon/R1", f))]
-    files = ["solomon/C1/" + f for f in listdir("solomon/C1") if isfile(join("solomon/C1", f))]
+    files = ["solomon/R1/"+f for f in listdir("solomon/R1") if isfile(join("solomon/R1", f))]
+    # files = ["solomon/C1/" + f for f in listdir("solomon/C1") if isfile(join("solomon/C1", f))]
     files.sort()
     print(files)
 
@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
         best_solution = nearest_neighbors_vrptw(vrptw)
 
-        work_time = 3600 # algorithtm working time
+        work_time = 3000 # algorithtm working time
         start_time = time.time()
         stop_time = start_time + work_time
 
@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
                 while not got_new_solution and stop_time >= time.time():
                     try:
-                        new_best_solution = queue.get(timeout=2)
+                        new_best_solution = queue.get(timeout=0.1)
                     except Empty:
                         pass
                     if new_best_solution:

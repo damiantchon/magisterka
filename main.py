@@ -84,7 +84,7 @@ if __name__ == '__main__':
 
     data = Data(str(file))
 
-    vrptw = VRPTW(data, vehicle_capacity=200)
+    vrptw = VRPTW(data, vehicle_capacity=1000)
 
     pos = nx.get_node_attributes(vrptw.graph, 'coordinates')
     demands = nx.get_node_attributes(vrptw.graph, 'demands')
@@ -98,6 +98,9 @@ if __name__ == '__main__':
 
     start_time = time.time()
     stop_time = start_time + work_time
+
+    p_vei = None
+    p_time = None
 
     while stop_time >= time.time():
 
@@ -122,7 +125,7 @@ if __name__ == '__main__':
 
             while not got_new_solution and stop_time >= time.time():
                 try:
-                    new_best_solution = queue.get(timeout=2)
+                    new_best_solution = queue.get(timeout=0.1)
                 except Empty:
                     pass
                 if new_best_solution:
@@ -135,7 +138,9 @@ if __name__ == '__main__':
                 if new_best_solution["vehicles"] < v:
 
                     os.kill(p_vei.pid, signal.SIGTERM)
+                    print("SIGTERM to VEI {} sent".format(p_vei.pid))
                     os.kill(p_time.pid, signal.SIGTERM)
+                    print("SIGTERM to TIME {} sent".format(p_time.pid))
                     p_vei.join()
                     p_time.join()
                     best_solution = new_best_solution
@@ -144,8 +149,12 @@ if __name__ == '__main__':
                 else:
                     best_solution = new_best_solution
 
+    os.kill(p_vei.pid, signal.SIGTERM)
+    print("SIGTERM to VEI {} sent".format(p_vei.pid))
+    os.kill(p_time.pid, signal.SIGTERM)
+    print("SIGTERM to TIME {} sent".format(p_time.pid))
 
-
+    print(best_solution)
 
     nx.draw_networkx(vrptw.graph, pos=pos, nodelist=vrptw.get_depo_ids(), with_labels=True, node_color='r',
                      node_size=300, font_color='k', font_size=8)

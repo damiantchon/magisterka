@@ -37,7 +37,7 @@ def add_solution_to_graph(graph, solution):
 
 if __name__ == '__main__':
 
-    data = Data("solomon/C1/C104_100")
+    data = Data("solomon/R1/R104_100")
 
     vrptw = VRPTW(data, vehicle_capacity=200)
 
