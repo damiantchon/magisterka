@@ -21,83 +21,95 @@ def log(string):
 
 if __name__ == '__main__':
 
-    files = ["solomon/R1/"+f for f in listdir("solomon/R1") if isfile(join("solomon/R1", f))]
+    file_sets = []
+
+    file_sets.append((sorted(["solomon/R1/" + f for f in listdir("solomon/R1") if isfile(join("solomon/R1", f))]), 200))
+    file_sets.append((sorted(["solomon/R2/" + f for f in listdir("solomon/R2") if isfile(join("solomon/R2", f))]), 1000))
+    file_sets.append((sorted(["solomon/C1/" + f for f in listdir("solomon/C1") if isfile(join("solomon/C1", f))]), 200))
+    file_sets.append((sorted(["solomon/C2/" + f for f in listdir("solomon/C2") if isfile(join("solomon/C2", f))]), 700))
+    file_sets.append((sorted(["solomon/RC1/" + f for f in listdir("solomon/RC1") if isfile(join("solomon/RC1", f))]), 200))
+    file_sets.append((sorted(["solomon/RC2/" + f for f in listdir("solomon/RC2") if isfile(join("solomon/RC2", f))]), 1000))
+
     # files = ["solomon/C1/" + f for f in listdir("solomon/C1") if isfile(join("solomon/C1", f))]
-    files.sort()
-    print(files)
 
-    for file in files:
 
-        log("Started working on {} solution.\n".format(file))
+    print(file_sets)
 
-        data = Data(file)
+    for set in file_sets:
 
-        vrptw = VRPTW(data, vehicle_capacity=200)
 
-        pos = nx.get_node_attributes(vrptw.graph, 'coordinates')
-        demands = nx.get_node_attributes(vrptw.graph, 'demands')
-        time_windows = nx.get_node_attributes(vrptw.graph, 'time_windows')
+        for file in set[0]:
 
-        macs = MACS_VRPTW(vrptw, tau0=None, m=10, alpha=0.5, beta=1, q0=0.9, p=0.1)
+            log("Started working on {} solution.\n".format(file))
 
-        print(macs.vrptw.distances)
+            data = Data(file)
 
-        best_solution = nearest_neighbors_vrptw(vrptw)
+            vrptw = VRPTW(data, vehicle_capacity=set[1])
 
-        work_time = 3000 # algorithtm working time
-        start_time = time.time()
-        stop_time = start_time + work_time
+            pos = nx.get_node_attributes(vrptw.graph, 'coordinates')
+            demands = nx.get_node_attributes(vrptw.graph, 'demands')
+            time_windows = nx.get_node_attributes(vrptw.graph, 'time_windows')
 
-        while stop_time >= time.time():
+            macs = MACS_VRPTW(vrptw, tau0=None, m=10, alpha=0.5, beta=1, q0=0.9, p=0.1)
 
-            v = best_solution["vehicles"]
+            print(macs.vrptw.distances)
 
-            queue = mp.Queue()
-            vei_time_queue = mp.Queue()
+            best_solution = nearest_neighbors_vrptw(vrptw)
 
-            p_vei = mp.Process(target=macs.ACS_VEI, args=(v, best_solution, stop_time, queue, vei_time_queue))
-            p_time = mp.Process(target=macs.ACS_TIME, args=(v+1, best_solution, start_time, stop_time, queue, vei_time_queue))
+            work_time = 1800 # algorithtm working time
+            start_time = time.time()
+            stop_time = start_time + work_time
 
-            p_vei.start()
-            p_time.start()
+            while stop_time >= time.time():
 
-            solution_with_less_vehicles_found = False
+                v = best_solution["vehicles"]
 
-            while not solution_with_less_vehicles_found and stop_time >= time.time():
+                queue = mp.Queue()
+                vei_time_queue = mp.Queue()
 
-                new_best_solution = None
-                got_new_solution = False
+                p_vei = mp.Process(target=macs.ACS_VEI, args=(v, best_solution, stop_time, queue, vei_time_queue))
+                p_time = mp.Process(target=macs.ACS_TIME, args=(v+1, best_solution, start_time, stop_time, queue, vei_time_queue))
 
-                while not got_new_solution and stop_time >= time.time():
-                    try:
-                        new_best_solution = queue.get(timeout=0.1)
-                    except Empty:
-                        pass
+                p_vei.start()
+                p_time.start()
+
+                solution_with_less_vehicles_found = False
+
+                while not solution_with_less_vehicles_found and stop_time >= time.time():
+
+                    new_best_solution = None
+                    got_new_solution = False
+
+                    while not got_new_solution and stop_time >= time.time():
+                        try:
+                            new_best_solution = queue.get(timeout=0.1)
+                        except Empty:
+                            pass
+                        if new_best_solution:
+                            got_new_solution = True
+
                     if new_best_solution:
-                        got_new_solution = True
+                        log("{} (Working time: {} at {})\n".format(file, str(int(time.time() - start_time)),
+                                                                                    str(time.asctime())))
+                        log(str(best_solution) + "\n")
+                        if new_best_solution["vehicles"] < v:
 
-                if new_best_solution:
-                    log("NEW_BEST_SOLUTION OF {} (Working time: {} at {})".format(file, str(time.time() - start_time),
-                                                                                str(time.asctime())))
-                    log(str(new_best_solution) + "\n")
-                    if new_best_solution["vehicles"] < v:
+                            os.kill(p_vei.pid, signal.SIGTERM)
+                            os.kill(p_time.pid, signal.SIGTERM)
+                            p_vei.join()
+                            p_time.join()
+                            best_solution = new_best_solution
+                            solution_with_less_vehicles_found = True
 
-                        os.kill(p_vei.pid, signal.SIGTERM)
-                        os.kill(p_time.pid, signal.SIGTERM)
-                        p_vei.join()
-                        p_time.join()
-                        best_solution = new_best_solution
-                        solution_with_less_vehicles_found = True
-
-                    else:
-                        best_solution = new_best_solution
+                        else:
+                            best_solution = new_best_solution
 
 
 
 
 
-        log("***FINAL SOLUTION*** ({})\n".format(file))
-        log(str(best_solution) + "\n")
+            log("{} || ***FINAL SOLUTION***\n".format(file))
+            log(str(best_solution) + "\n")
 
 
 

@@ -1,4 +1,5 @@
 from scipy.spatial import distance
+import random
 import copy
 
 def manhattan_distance(x, y):
@@ -578,6 +579,7 @@ def run_2opt(vrptw, route, reverse):
     assert len(best_route) == len(route)
     return best_route
 
+
 def calculate_center_of_mass(vrptw, solution):
     sum_of_x = 0
     sum_of_y = 0
@@ -593,50 +595,6 @@ def calculate_center_of_mass(vrptw, solution):
 
 
 def local_search_clean(vrptw, solution):
-
-    def calculate_delta(X1i, X2i, Y1i, Y2i, r1, r2):
-
-        dist = vrptw.distances
-
-        if X1i == Y1i and X2i == Y2i:
-            delta = dist[r1[X1i]][r2[X2i + 1]] + dist[r2[X2i]][r1[X1i + 1]] - \
-                (dist[r1[X1i]][r1[X1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
-
-        elif X1i != Y1i and X2i != Y2i:
-            delta = dist[r1[X1i]][r2[X2i + 1]] + dist[r2[Y2i]][r1[Y1i + 1]] + dist[r2[X2i]][r1[X1i + 1]] + dist[r1[Y1i]][r2[Y2i + 1]] - \
-                    (dist[r1[X1i]][r1[X1i + 1]] + dist[r1[Y1i]][r1[Y1i + 1]] + dist[r2[X2i]][r2[X2i + 1]] + dist[r2[Y2i]][r2[Y2i + 1]])
-
-        elif X1i == Y1i and X2i != Y2i:
-            delta = dist[r2[X2i]][r2[Y2i + 1]] + dist[r1[X1i]][r2[X2i + 1]] + dist[r2[Y2i]][r1[Y1i + 1]] - \
-                    (dist[r2[X2i]][r2[X2i + 1]] + dist[r2[Y2i]][r2[Y2i + 1]] + dist[r1[X1i]][r1[X1i + 1]])
-
-        else: # X1i != Y1i and X2i == Y2i:
-            delta = dist[r1[X1i]][r1[Y1i + 1]] + dist[r2[X2i]][r1[X1i + 1]] + dist[r1[Y1i]][r2[Y2i + 1]] - \
-                    (dist[r1[X1i]][r1[X1i + 1]] + dist[r1[Y1i]][r1[Y1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
-
-        return delta
-
-    def calculate_delta2(X1i, X2i, Y1i, Y2i, r1, r2):
-
-        dist = vrptw.distances
-
-        if X1i == Y1i:
-            if X2i == Y2i:
-                delta = dist[r1[X1i]][r2[X2i + 1]] + dist[r2[X2i]][r1[X1i + 1]] - \
-                    (dist[r1[X1i]][r1[X1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
-            else:
-                delta = dist[r2[X2i]][r2[Y2i + 1]] + dist[r1[X1i]][r2[X2i + 1]] + dist[r2[Y2i]][r1[Y1i + 1]] - \
-                        (dist[r2[X2i]][r2[X2i + 1]] + dist[r2[Y2i]][r2[Y2i + 1]] + dist[r1[X1i]][r1[X1i + 1]])
-
-        else:
-            if X2i == Y2i:
-                delta = dist[r1[X1i]][r1[Y1i + 1]] + dist[r2[X2i]][r1[X1i + 1]] + dist[r1[Y1i]][r2[Y2i + 1]] - \
-                        (dist[r1[X1i]][r1[X1i + 1]] + dist[r1[Y1i]][r1[Y1i + 1]] + dist[r2[X2i]][r2[X2i + 1]])
-            else:
-                delta = dist[r1[X1i]][r2[X2i + 1]] + dist[r2[Y2i]][r1[Y1i + 1]] + dist[r2[X2i]][r1[X1i + 1]] + dist[r1[Y1i]][r2[Y2i + 1]] - \
-                        (dist[r1[X1i]][r1[X1i + 1]] + dist[r1[Y1i]][r1[Y1i + 1]] + dist[r2[X2i]][r2[X2i + 1]] + dist[r2[Y2i]][r2[Y2i + 1]])
-
-        return delta
 
     def calculate_delta3(X1, X1p, X2, X2p, Y1, Y1p, Y2, Y2p) :
 
@@ -659,7 +617,6 @@ def local_search_clean(vrptw, solution):
                         (dist[X1][X1p] + dist[Y1][Y1p] + dist[X2][X2p] + dist[Y2][Y2p])
 
         return delta
-
 
     def swap_edges(route1, route2, X1pi, X2pi, Y1pi, Y2pi):
 
@@ -695,6 +652,7 @@ def local_search_clean(vrptw, solution):
         sorted_unzipped = (list(zip(*list(zip(*sorted_zipped))[0])))
 
         return sorted_unzipped[0], sorted_unzipped[1]
+
 
     def local_search_single(first_route, second_route, d_table):
 
@@ -820,6 +778,7 @@ def local_search_clean(vrptw, solution):
 
     departure_table = create_auxiliary_table(vrptw, solution["routes"])
 
+    # basic
     # for i in range(0, len(solution["routes"])-1):
     #     for j in range(i+1, len(solution["routes"])):
     #         # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
@@ -840,9 +799,41 @@ def local_search_clean(vrptw, solution):
     #                     local_search_single(solution["routes"][i], solution["routes"][order[j]], departure_table)
     #                 departure_table = update_auxiliary_table(vrptw, [solution["routes"][i], solution["routes"][order[j]]], departure_table)
 
-    # # main loop 2
+
+    # Ze środkiem ciężkości + shuffle
+    # shuffled_ids = list(range(len(solution["routes"]) - 1))
+    # random.shuffle(shuffled_ids)
+    # for i in shuffled_ids:
+    #     if(solution["routes"][i] is not [0, 0]):
+    #         order, sol_sorted_by_CoM = prepeare_for_ls(vrptw, solution["routes"], solution["routes"][i])
+    #         for j in range(0, len(sol_sorted_by_CoM)):
+    #             # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
+    #             if  solution["routes"][j] is not [0, 0]:
+    #                 solution["routes"][i], solution["routes"][order[j]], _ = \
+    #                     local_search_single(solution["routes"][i], solution["routes"][order[j]], departure_table)
+    #                 departure_table = update_auxiliary_table(vrptw, [solution["routes"][i], solution["routes"][order[j]]], departure_table)
+
+    # # proper
+    # departure_table = create_auxiliary_table(vrptw, solution["routes"])
+    # for i in range(0, len(solution["routes"])-1):
+    #     solutions = []
+    #     for j in range(i+1, len(solution["routes"])):
+    #         # departure_table = create_auxiliary_table(vrptw, solution["routes"])
+    #         # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
+    #         if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
+    #             solutions.append((i, j, local_search_single(solution["routes"][i], solution["routes"][j], departure_table)))
+    #     # print(solutions)
+    #     best = min(solutions, key=lambda item: item[2][2])
+    #     # print(best)
+    #     solution["routes"][best[0]] = best[2][0]
+    #     solution["routes"][best[1]] = best[2][1]
+    #     departure_table = update_auxiliary_table(vrptw, [solution["routes"][best[0]], solution["routes"][best[1]]], departure_table)
+
+    # # proper + shuffle
+    shuffled_ids = list(range(len(solution["routes"]) - 1))
+    random.shuffle(shuffled_ids)
     departure_table = create_auxiliary_table(vrptw, solution["routes"])
-    for i in range(0, len(solution["routes"])-1):
+    for i in shuffled_ids:
         solutions = []
         for j in range(i+1, len(solution["routes"])):
             # departure_table = create_auxiliary_table(vrptw, solution["routes"])

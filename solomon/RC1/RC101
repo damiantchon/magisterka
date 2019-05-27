@@ -1,5 +1,5 @@
- CUST NO.   XCOORD.    YCOORD.    DEMAND   READY TIME   DUE DATE   SERVICE TIME
- 1      40.00      50.00       0.00       0.00     240.00       0.00
+CUST NO.   XCOORD.    YCOORD.    DEMAND   READY TIME   DUE DATE   SERVICE TIME
+    1      40.00      50.00       0.00       0.00     240.00       0.00
     2      25.00      85.00      20.00     145.00     175.00      10.00
     3      22.00      75.00      30.00      50.00      80.00      10.00
     4      22.00      85.00      10.00     109.00     139.00      10.00

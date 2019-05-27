@@ -257,7 +257,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 load = 0
 
             # local pheromone updating
-            if(current_location == 1 and next_location == 0):\
+            # if(current_location == 1 and next_location == 0):
             pheromones[current_location][next_location] = \
                 ((1-self.p) * pheromones[current_location][next_location]) + (self.p*self.tau0)
 
@@ -306,6 +306,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
                 for customer in list(set(self.vrptw.ids) - set(self.get_customers(solution) + [0])):
                     IN[customer] = IN[customer] + 1
+
                 kth_solutions.append(solution)
 
             best_colony_solution = self.get_best_solution_VEI(kth_solutions)
@@ -316,6 +317,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 print("CHECKING FEASIBILITY OF (len{})".format(self.count_customers(best_VEI_solution)), best_VEI_solution)
                 if check_solution_feasibility(self.vrptw, best_VEI_solution["routes"]):
                     queue.put(best_VEI_solution)
+                    print("FEASIBLE!")
 
             self.pheromones_VEI = self.update_pheromones(best_VEI_solution, self.pheromones_VEI, best_solution)
 

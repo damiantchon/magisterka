@@ -72,6 +72,7 @@ def draw_solution_to_graph(graph, pos, solution):
 
 
     return graph
+
 if __name__ == '__main__':
 
     print(sys.argv)
@@ -90,7 +91,7 @@ if __name__ == '__main__':
     demands = nx.get_node_attributes(vrptw.graph, 'demands')
     time_windows = nx.get_node_attributes(vrptw.graph, 'time_windows')
 
-    macs = MACS_VRPTW(vrptw, tau0=None, m=10, alpha=0.5, beta=1, q0=0.9, p=0.1)
+    macs = MACS_VRPTW(vrptw, tau0=None, m=10, beta=2, q0=0.9, p=0.1)
 
     print(macs.vrptw.distances)
 
