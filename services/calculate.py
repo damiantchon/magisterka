@@ -848,7 +848,7 @@ def local_search_clean(vrptw, solution):
         departure_table = update_auxiliary_table(vrptw, [solution["routes"][best[0]], solution["routes"][best[1]]], departure_table)
 
     # aktualizacja rozwiązania
-    print(update_solution(solution))
+    # print(update_solution(solution))
     return update_solution(solution)
 
 
