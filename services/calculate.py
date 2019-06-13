@@ -546,20 +546,17 @@ def routes_length(vrptw, routes):
     return round(length, 2) # int(length*(10**2))/(10.**2)
 
 
-def swap_2opt(route, i, k, reverse):
+def swap_2opt(route, i, k):
     assert i >= 0 and i < (len(route) - 1)
     assert k > i and k < len(route)
     new_route = route[0:i]
-    if reverse:
-        new_route.extend(reversed(route[i:k + 1]))
-    else:
-        new_route.extend(route[i:k + 1])
+    new_route.extend(reversed(route[i:k + 1]))
     new_route.extend(route[k+1:])
     assert len(new_route) == len(route)
     return new_route
 
 
-def run_2opt(vrptw, route, reverse):
+def run_2opt(vrptw, route):
     improvement = True
     best_route = route
     best_distance = routes_length(vrptw, [route])
@@ -567,7 +564,7 @@ def run_2opt(vrptw, route, reverse):
         improvement = False
         for i in range(1, len(best_route)):
             for k in range(i+1, min(i+5, len(best_route))-1):
-                new_route = swap_2opt(best_route, i, k, reverse)
+                new_route = swap_2opt(best_route, i, k)
                 new_distance = routes_length(vrptw, [new_route])
                 if new_distance < best_distance and two_opt_feasibility(vrptw, new_route):
                     best_distance = new_distance
@@ -757,11 +754,8 @@ def local_search_clean(vrptw, solution):
                 #     else:
                 #         dlugosci_X2.pop(0)
 
-        first_best = run_2opt(vrptw, first_best, reverse=True)
-        second_best = run_2opt(vrptw, second_best, reverse=True)
-
-        first_best = run_2opt(vrptw, first_best, reverse=False)
-        second_best = run_2opt(vrptw, second_best, reverse=False)
+        first_best = run_2opt(vrptw, first_best)
+        second_best = run_2opt(vrptw, second_best)
 
         return first_best, second_best, best_delta
 
@@ -776,7 +770,6 @@ def local_search_clean(vrptw, solution):
 
         return updated_solution
 
-    departure_table = create_auxiliary_table(vrptw, solution["routes"])
 
     # basic
     # for i in range(0, len(solution["routes"])-1):

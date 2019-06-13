@@ -10,7 +10,7 @@ import pandas as pd
 import multiprocessing as mp
 from queue import Empty
 
-
+from profilehooks import profile
 from services.calculate import nearest_neighbors_vrptw, routes_length
 from VRPTW import Data, VRPTW
 from ACO import MACS_VRPTW
@@ -77,21 +77,21 @@ if __name__ == '__main__':
 
     print(sys.argv)
 
-    file = str(sys.argv[1]) # source file with model
+    file = str(sys.argv[1])  # source file with model
 
-    work_time = int(sys.argv[2]) # algorithtm working time
+    work_time = int(sys.argv[2])  # algorithtm working time
 
     log("Started working on {} solution.\n".format(str(file)))
 
     data = Data(str(file))
 
-    vrptw = VRPTW(data, vehicle_capacity=1000)
+    vrptw = VRPTW(data, vehicle_capacity=200)
 
     pos = nx.get_node_attributes(vrptw.graph, 'coordinates')
     demands = nx.get_node_attributes(vrptw.graph, 'demands')
     time_windows = nx.get_node_attributes(vrptw.graph, 'time_windows')
 
-    macs = MACS_VRPTW(vrptw, tau0=None, m=10, beta=2, q0=0.9, p=0.1)
+    macs = MACS_VRPTW(vrptw, tau0=None, m=10, beta=1, q0=0.9, p=0.1)
 
     print(macs.vrptw.distances)
 

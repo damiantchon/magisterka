@@ -4,21 +4,20 @@ from queue import Full, Empty
 from multiprocessing import Queue
 import time
 import os
-
+from profilehooks import profile
 from VRPTW import VRPTW_MACS_DS, Data, VRPTW
 import numpy as np
 import random
-from services.calculate import routes_length, check_solution_feasibility
+from services.calculate import routes_length, check_solution_feasibility, run_2opt
 
 
 
 class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems With Time Windows
 
-    def __init__(self, vrptw, m, alpha, beta, tau0, q0, p): #jeśli tau0 , m - liczba mrówek, q0 - exploitation vs exploration
+    def __init__(self, vrptw, m, beta, tau0, q0, p): #jeśli tau0 , m - liczba mrówek, q0 - exploitation vs exploration
 
         self.vrptw = vrptw
         self.m = m
-        self.alpha = alpha
         self.beta = beta
         self.tau0 = tau0
         self.q0 = q0
@@ -63,7 +62,8 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         # todo WARUNKI WYJŚCIA
 
-    def new_active_ant(self, k, local_search, IN, macs_ds, pheromones):
+
+    def new_active_ant(self, local_search, IN, macs_ds, pheromones):
 
         def get_fesible_cities(with_depos):
 
@@ -162,6 +162,34 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
                 return True
 
+            def feasible_after_insertion(route, time):
+
+                if time + macs_ds.distances[route[len(route)-3]][route[len(route)-2]] > macs_ds.time_windows[route[len(route)-2]][1]:
+                    return False
+                else:
+                    time = max(time + macs_ds.distances[route[len(route)-3]][route[len(route)-2]], macs_ds.time_windows[route[len(route)-2]][0])
+                    time = time + macs_ds.service_times[route[len(route)-2]]
+                    if time + macs_ds.distances[route[len(route)-1]][0] > macs_ds.time_windows[0][1]:
+                        return False
+                return True
+
+
+            def get_last_customer_time(route):
+                time = 0
+
+                for i in range(0, len(route) - 1):
+                    time = max(time + macs_ds.distances[route[i]][route[i + 1]],
+                               macs_ds.time_windows[route[i + 1]][0])
+                    time = time + macs_ds.service_times[route[i + 1]]
+
+                return time
+
+            def update_last_customer_time(route, time):
+                time = max(time + macs_ds.distances[route[len(route) - 3]][route[len(route) - 2]],
+                           macs_ds.time_windows[route[len(route) - 2]][0])
+                time = time + macs_ds.service_times[route[len(route) - 2]]
+                return time
+
             def route_length(route):
                 length = 0
 
@@ -169,7 +197,6 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                     length += macs_ds.distances[route[i]][route[i + 1]]
 
                 return round(length, 2)
-
 
             # divide tour into list of single vehicle rides
             decoded_tour = decode_tour(tour)
@@ -197,11 +224,14 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
                     if t[1] + city_w_demand[1] <= macs_ds.vehicle_capacity: # check if demand did not exceed vehicle_capacity
                         route = t[0].copy()
+
                         for n, city in enumerate(t[0][1:], 1):
+
                             route.insert(n, city_w_demand[0])
+
                             if is_fesible(route):
                                 posible_inserts.append((tour_id, n, route_length(route)))
-                            route.remove(city_w_demand[0])
+                                route.remove(city_w_demand[0])
 
                 if posible_inserts:
                     best = min(posible_inserts, key=lambda x: x[2])
@@ -287,6 +317,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             print(os.getpid(), solution)
         return solution
 
+
     def ACS_VEI(self, v, best_solution, stop_time, queue, vei_time_queue):
 
         print("ACS_VEI v =", v)
@@ -302,7 +333,8 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
             kth_solutions = []
             for k in range(0, self.m):
-                solution = self.new_active_ant(k, local_search=False, IN=IN, macs_ds=macs_ds, pheromones=self.pheromones_VEI)
+
+                solution = self.new_active_ant(local_search=False, IN=IN, macs_ds=macs_ds, pheromones=self.pheromones_VEI)
 
                 for customer in list(set(self.vrptw.ids) - set(self.get_customers(solution) + [0])):
                     IN[customer] = IN[customer] + 1
@@ -319,7 +351,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                     queue.put(best_VEI_solution)
                     print("FEASIBLE!")
 
-            self.pheromones_VEI = self.update_pheromones(best_VEI_solution, self.pheromones_VEI, best_solution)
+            self.pheromones_VEI = self.update_pheromones(best_VEI_solution, self.pheromones_VEI, best_VEI_solution)
 
             try:
                 best_solution = vei_time_queue.get_nowait()
@@ -331,6 +363,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         print("DEAD :(")
 
+    @profile(immediate=True)
     def ACS_TIME(self, v, best_solution, start_time, stop_time, queue, vei_time_queue):
 
         print("ACS_TIME v =", v)
@@ -349,7 +382,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 if not stop_time > time.time():
                     break
                 else:
-                     kth_solutions.append(self.new_active_ant(k=1, local_search=True, IN=0, macs_ds=macs_ds, pheromones=self.pheromones_TIME))
+                     kth_solutions.append(self.new_active_ant(local_search=True, IN=0, macs_ds=macs_ds, pheromones=self.pheromones_TIME))
 
 
             best_TIME_solution = self.get_best_solution_TIME(macs_ds=macs_ds, solutions=kth_solutions)

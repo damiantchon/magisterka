@@ -50,13 +50,13 @@ if __name__ == '__main__':
             demands = nx.get_node_attributes(vrptw.graph, 'demands')
             time_windows = nx.get_node_attributes(vrptw.graph, 'time_windows')
 
-            macs = MACS_VRPTW(vrptw, tau0=None, m=10, alpha=0.5, beta=1, q0=0.9, p=0.1)
+            macs = MACS_VRPTW(vrptw, tau0=None, m=10, beta=1, q0=0.9, p=0.1)
 
             print(macs.vrptw.distances)
 
             best_solution = nearest_neighbors_vrptw(vrptw)
 
-            work_time = 1800 # algorithtm working time
+            work_time = 30 # algorithtm working time
             start_time = time.time()
             stop_time = start_time + work_time
 
@@ -89,9 +89,10 @@ if __name__ == '__main__':
                             got_new_solution = True
 
                     if new_best_solution:
+
                         log("{} (Working time: {} at {})\n".format(file, str(int(time.time() - start_time)),
                                                                                     str(time.asctime())))
-                        log(str(best_solution) + "\n")
+                        log(str(new_best_solution) + "\n")
                         if new_best_solution["vehicles"] < v:
 
                             os.kill(p_vei.pid, signal.SIGTERM)
