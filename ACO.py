@@ -23,13 +23,14 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
         self.q0 = q0
         self.p = p
 
+        self.hashes = {}
+
         self.starting_time = 0
         self.search_duration = 0
 
 
         self.pheromones_TIME = [] # 2 wymiarowa tablica zawierająca informacje o feromonie z i na j
         self.pheromones_VEI = [] # 2 wymiarowa tablica zawierająca informacje o feromonie z i na j
-
 
     def run(self, search_duration):
         self.search_duration = search_duration
@@ -62,6 +63,18 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         # todo WARUNKI WYJŚCIA
 
+    def get_solution_hash(self, solution):
+
+        hashes = []
+
+        for route in solution["routes"]:
+            hashes.append(hash(tuple(route)))
+
+        hashes.sort()
+
+        final_hash = hash(tuple(hashes))
+
+        return final_hash
 
     def new_active_ant(self, local_search, IN, macs_ds, pheromones):
 
@@ -150,17 +163,19 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 time = 0
 
                 for i in range(0, len(route) - 1):
-                    if time + macs_ds.distances[route[i]][route[i+1]] <= macs_ds.time_windows[route[i+1]][1]:
 
-                        time = max(time + macs_ds.distances[route[i]][route[i+1]], macs_ds.time_windows[route[i+1]][0])
-                        time = time + macs_ds.service_times[route[i+1]]
+                    time_after = time + macs_ds.distances[route[i]][route[i + 1]]
 
-                        if time + macs_ds.distances[route[i+1]][0] > macs_ds.time_windows[0][1]:
-                            return False
+                    if time_after <= macs_ds.time_windows[route[i+1]][1]:
+
+                        time = max(time_after, macs_ds.time_windows[route[i+1]][0]) + macs_ds.service_times[route[i+1]]
                     else:
                         return False
 
-                return True
+                if time + macs_ds.distances[route[len(route)-1]][0] > macs_ds.time_windows[0][1]:
+                    return False
+                else:
+                    return True
 
             def feasible_after_insertion(route, time):
 
@@ -172,7 +187,6 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                     if time + macs_ds.distances[route[len(route)-1]][0] > macs_ds.time_windows[0][1]:
                         return False
                 return True
-
 
             def get_last_customer_time(route):
                 time = 0
@@ -204,7 +218,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             tours_with_demands = calculate_demands(decoded_tour)
 
             # create list of non_visited sorted by delivery quantities (tuple (id, quantity))
-            non_visited = set(non_visited) - set(macs_ds.depo_ids) #  remove all depos from not visited (just to be sure :D)
+            non_visited = set(non_visited) - set(macs_ds.depo_ids) #  remove all depos from not visited (just to be sure)
 
             nv_w_demands = []
 
@@ -231,6 +245,8 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
                             if is_fesible(route):
                                 posible_inserts.append((tour_id, n, route_length(route)))
+                                route.remove(city_w_demand[0])
+                            else:
                                 route.remove(city_w_demand[0])
 
                 if posible_inserts:
@@ -286,8 +302,6 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 current_time = 0
                 load = 0
 
-            # local pheromone updating
-            # if(current_location == 1 and next_location == 0):
             pheromones[current_location][next_location] = \
                 ((1-self.p) * pheromones[current_location][next_location]) + (self.p*self.tau0)
 
@@ -309,15 +323,25 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             # print("BEFORE", solution)
             last_solution_length = solution["length"]
 
-            solution = local_search_clean(macs_ds, solution)
+            solution_hash = self.get_solution_hash(solution)
+            if solution_hash in self.hashes:
+                print("X", os.getpid(), self.hashes[solution_hash])
+                return self.hashes[solution_hash]
+            else:
 
-            while (last_solution_length > solution["length"]):
-                last_solution_length = solution["length"]
                 solution = local_search_clean(macs_ds, solution)
-            print(os.getpid(), solution)
+
+                while (last_solution_length > solution["length"]):
+                    last_solution_length = solution["length"]
+                    solution = local_search_clean(macs_ds, solution)
+                print(os.getpid(), solution)
+
+                self.hashes[solution_hash] = solution
+
+
         return solution
 
-
+    @profile(immediate=True)
     def ACS_VEI(self, v, best_solution, stop_time, queue, vei_time_queue):
 
         print("ACS_VEI v =", v)
@@ -363,7 +387,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         print("DEAD :(")
 
-    @profile(immediate=True)
+    # @profile(immediate=True)
     def ACS_TIME(self, v, best_solution, start_time, stop_time, queue, vei_time_queue):
 
         print("ACS_TIME v =", v)
@@ -401,7 +425,6 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
 
             self.pheromones_TIME = self.update_pheromones(best_solution, self.pheromones_TIME, best_solution)
-
 
     def count_customers(self, solution):
         customer_count = 0
