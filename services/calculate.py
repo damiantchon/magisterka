@@ -13,8 +13,6 @@ def euclidean_distance(x, y):
 def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojdę
 
     to_visit = []
-    visited = []
-
 
     # prepeare "to_visit"
     for i in range(1, vrptw.size):
@@ -89,12 +87,13 @@ def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojd�
 def nearest_neighbors_vrptw_vei(vrptw, v): # greedy greedy - tylko sprawdzane czy dojdę
 
     to_visit = []
-    visited = []
 
 
     # prepeare "to_visit"
     for i in range(1, vrptw.size):
         to_visit.append(vrptw.ids[i])
+
+    print("TO VISIT {}".format(to_visit))
 
     routes = []
     total_lenght = 0
@@ -162,7 +161,7 @@ def nearest_neighbors_vrptw_vei(vrptw, v): # greedy greedy - tylko sprawdzane cz
     return solution
 
 
-def check_feasibility(vrptw, routes): #TODO zoptymalizować
+def check_feasibility_diagnositcs(vrptw, routes):
 
     for route in routes:
 
@@ -704,14 +703,6 @@ def local_search_clean(vrptw, solution):
                             is_feasible = True
 
 
-                        # dlugosci_Y2.append(delta)
-                        # if len(dlugosci_Y2) == 3:
-                        #     if dlugosci_Y2[0] < dlugosci_Y2[1] < dlugosci_Y2[2]:
-                        #         dlugosci_Y2.clear()
-                        #         break
-                        #     else:
-                        #         dlugosci_Y2.pop(0)
-
                         if not is_feasible:
                             break
 
@@ -719,6 +710,7 @@ def local_search_clean(vrptw, solution):
                         #                          r2=second_route)
 
                         delta = calculate_delta3(X1, X1p, X2, X2p, Y1, Y1p, Y2, Y2p)
+
 
                         if delta < best_X2:
                             best_X2 = delta
@@ -746,13 +738,6 @@ def local_search_clean(vrptw, solution):
 
                                 second_best = temp_second
 
-                # dlugosci_X2.append(best_X2)
-                # if len(dlugosci_X2) == 3:
-                #     if dlugosci_X2[0] < dlugosci_X2[1] < dlugosci_X2[2]:
-                #         dlugosci_X2.clear()
-                #         break
-                #     else:
-                #         dlugosci_X2.pop(0)
 
         first_best = run_2opt(vrptw, first_best)
         second_best = run_2opt(vrptw, second_best)
@@ -772,6 +757,8 @@ def local_search_clean(vrptw, solution):
 
 
     # basic
+    # departure_table = create_auxiliary_table(vrptw, solution["routes"])
+    #
     # for i in range(0, len(solution["routes"])-1):
     #     for j in range(i+1, len(solution["routes"])):
     #         # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
@@ -794,6 +781,7 @@ def local_search_clean(vrptw, solution):
 
 
     # Ze środkiem ciężkości + shuffle
+    # departure_table = create_auxiliary_table(vrptw, solution["routes"])
     # shuffled_ids = list(range(len(solution["routes"]) - 1))
     # random.shuffle(shuffled_ids)
     # for i in shuffled_ids:
@@ -833,9 +821,9 @@ def local_search_clean(vrptw, solution):
             # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
             if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
                 solutions.append((i, j, local_search_single(solution["routes"][i], solution["routes"][j], departure_table)))
-        # print(solutions)
-        best = min(solutions, key=lambda item: item[2][2])
-        # print(best)
+
+        best = min(solutions, key=lambda item: item[2][2]) #Wyszukanie najlepszej zmiany
+
         solution["routes"][best[0]] = best[2][0]
         solution["routes"][best[1]] = best[2][1]
         departure_table = update_auxiliary_table(vrptw, [solution["routes"][best[0]], solution["routes"][best[1]]], departure_table)

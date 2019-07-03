@@ -6,7 +6,7 @@ import pandas as pd
 from itertools import chain
 import copy
 
-from services.calculate import nearest_neighbors_vrptw, local_search_clean, routes_length, check_feasibility, create_auxiliary_table, check_solution_feasibility, run_2opt
+from services.calculate import nearest_neighbors_vrptw, local_search_clean, routes_length, check_feasibility_diagnositcs, create_auxiliary_table, check_solution_feasibility, run_2opt
 from VRPTW import Data, VRPTW, VRPTW_MACS_DS
 from ACO import MACS_VRPTW
 
