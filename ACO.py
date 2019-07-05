@@ -32,37 +32,6 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
         self.pheromones_TIME = [] # 2 wymiarowa tablica zawierająca informacje o feromonie z i na j
         self.pheromones_VEI = [] # 2 wymiarowa tablica zawierająca informacje o feromonie z i na j
 
-    def run(self, search_duration):
-        self.search_duration = search_duration
-        self.starting_time = time.time()
-
-        self.best_solution = nearest_neighbors_vrptw(self.vrptw)
-        self.best_solution = local_search_clean(self.vrptw, self.best_solution)
-
-        print("Best solution v:", self.best_solution["vehicles"])
-        print("Tau:", self.tau0)
-
-
-        v = self.best_solution["vehicles"]
-        while self.starting_time + self.search_duration > time.time():
-            v = self.best_solution["vehicles"]
-
-            vei_process = mp.Process(target=self.ACS_VEI, args=(v,))
-            time_process = mp.Process(target=self.ACS_TIME, args=(v + 1,))
-
-            vei_process.start()
-            time_process.start()
-
-
-            self.vei_running = False
-            self.time_running = False
-
-
-            self.vei_running = True
-            self.time_running = True
-
-        # todo WARUNKI WYJŚCIA
-
     def get_solution_hash(self, solution):
 
         hashes = []
@@ -382,14 +351,14 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 if check_solution_feasibility(self.vrptw, best_VEI_solution["routes"]):
                     queue.put(best_VEI_solution)
                     print("FEASIBLE!")
-            self.pheromones_VEI = self.update_pheromones(best_VEI_solution, self.pheromones_VEI, best_VEI_solution)
+            self.pheromones_VEI = self.update_pheromones(macs_ds, best_VEI_solution, self.pheromones_VEI, best_VEI_solution)
 
             try:
                 best_solution = vei_time_queue.get_nowait()
                 print("VEI's NEW BEST SOLUTION is", best_solution)
             except Empty:
                 pass
-            self.pheromones_VEI = self.update_pheromones(best_solution, self.pheromones_VEI, best_solution)
+            self.pheromones_VEI = self.update_pheromones(macs_ds, best_solution, self.pheromones_VEI, best_solution)
 
         print("VEI DEAD")
 
@@ -430,7 +399,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                     vei_time_queue.put(best_TIME_solution)
 
 
-            self.pheromones_TIME = self.update_pheromones(best_solution, self.pheromones_TIME, best_solution)
+            self.pheromones_TIME = self.update_pheromones(macs_ds, best_solution, self.pheromones_TIME, best_solution)
 
     def count_customers(self, solution):
         customer_count = 0
@@ -498,8 +467,45 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         return pheromones
 
-    def update_pheromones(self, solution, pheromones, best_solution):
+    def update_pheromones(self, macs_ds, solution, pheromones, best_solution):
+
+        def get_next_location(pheromones, location, target_locations):
+            pher_x_atract_B = []
+
+            for target in target_locations:
+                pher_x_atract_B.append((depo, pheromones[location][target] * pow(attractiveness[current_location][ct], self.beta)))
+
+            pher_x_atract_B_sum = sum(n for _, n in pher_x_atract_B)
+
+            if random.random() < self.q0: # exploitation
+                return max(pher_x_atract_B ,key=lambda x:x[1])[0]
+
+            else:   # exploration
+                cities_and_probabilities = []
+                for elem in pher_x_atract_B:
+                    cities_and_probabilities.append((elem[0], elem[1]/pher_x_atract_B_sum))
+
+                cities = [i[0] for i in cities_and_probabilities]
+                probabilities = [i[1] for i in cities_and_probabilities]
+
+                return np.random.choice(a=cities, p=probabilities)
+
+
+        depos = macs_ds.depo_ids.copy()
+        depo = depos.pop(0)
+
         for route in solution["routes"]:
-            for i in range(0, len(route)-1):
+
+
+            pheromones[depo][route[1]] = (1-self.p)* pheromones[depo][route[1]] + self.p/best_solution["length"]
+
+            for i in range(1, len(route)-2):
                 pheromones[route[i]][route[i+1]] = (1-self.p)*pheromones[route[i]][route[i+1]] + self.p/best_solution["length"]
+
+            if(depos):
+                depo = depos.pop(0)
+                pheromones[route[len(route)-1]][depo] = (1-self.p)*pheromones[route[len(route)-1]][depo] + self.p/best_solution["length"]
+            else:
+                pheromones[route[len(route)-1]][0] = (1-self.p)*pheromones[route[len(route)-1]][0] + self.p/best_solution["length"]
+
         return pheromones

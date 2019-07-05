@@ -87,16 +87,15 @@ if __name__ == '__main__':
 
     file_sets = []
 
-    # file_sets.append((sorted(["solomon/100/R1/" + f for f in listdir("solomon/100/R1") if isfile(join("solomon/100/R1", f))]), 200))
-    # file_sets.append((sorted(["solomon/100/R2/" + f for f in listdir("solomon/100/R2") if isfile(join("solomon/100/R2", f))]), 1000))
-    # file_sets.append((sorted(["solomon/100/C1/" + f for f in listdir("solomon/100/C1") if isfile(join("solomon/100/C1", f))]), 200))
-    # file_sets.append((sorted(["solomon/100/C2/" + f for f in listdir("solomon/100/C2") if isfile(join("solomon/100/C2", f))]), 700))
-    # file_sets.append((sorted(["solomon/100/RC1/" + f for f in listdir("solomon/100/RC1") if isfile(join("solomon/100/RC1", f))]), 200))
+    file_sets.append((sorted(["solomon/100/R1/" + f for f in listdir("solomon/100/R1") if isfile(join("solomon/100/R1", f))]), 200))
+    file_sets.append((sorted(["solomon/100/R2/" + f for f in listdir("solomon/100/R2") if isfile(join("solomon/100/R2", f))]), 1000))
+    file_sets.append((sorted(["solomon/100/C1/" + f for f in listdir("solomon/100/C1") if isfile(join("solomon/100/C1", f))]), 200))
+    file_sets.append((sorted(["solomon/100/C2/" + f for f in listdir("solomon/100/C2") if isfile(join("solomon/100/C2", f))]), 700))
+    file_sets.append((sorted(["solomon/100/RC1/" + f for f in listdir("solomon/100/RC1") if isfile(join("solomon/100/RC1", f))]), 200))
     file_sets.append((sorted(["solomon/100/RC2/" + f for f in listdir("solomon/100/RC2") if isfile(join("solomon/100/RC2", f))]), 1000))
 
     print(file_sets)
 
-    file_sets[0][0].pop(0)
 
     for set in file_sets:
 
