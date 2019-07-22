@@ -3,35 +3,23 @@ import sys
 import time
 import signal
 import random
+import datetime
+import argparse
 import numpy as np
 import networkx as nx
-import matplotlib.pyplot as plt
 import pandas as pd
 import multiprocessing as mp
 from queue import Empty
 
-from profilehooks import profile
 from services.calculate import nearest_neighbors_vrptw, routes_length
-from VRPTW import Data, VRPTW
-from ACO import MACS_VRPTW
+from data import ParsedData, VRPTW
+from MACS_VRPTW import MACS_VRPTW
 
 
 desired_width = 320
 pd.set_option('display.width', desired_width)
 np.set_printoptions(linewidth=desired_width)
 
-
-def get_spaced_colors(n):
-    max_value = 16581375  # 255**3
-    interval = int(max_value / n)
-    colors = [hex(I)[2:].zfill(6) for I in range(0, max_value, interval)]
-
-    return [(int(i[:2], 16)/255, int(i[2:4], 16)/255, int(i[4:], 16)/255) for i in colors]
-
-def log(string):
-    file = open("log.txt", "a")
-    file.write(string)
-    file.close()
 
 def update_solution(solution_to_update):
 
@@ -43,47 +31,94 @@ def update_solution(solution_to_update):
     updated_solution["vehicles"] = len(updated_solution["routes"])
     return updated_solution
 
-def add_solution_to_graph(graph, solution):
 
-    colors = get_spaced_colors(len(solution["routes"]))
+def describe_solution(solution, logging=False, filename=None):
 
-    for c, route in enumerate(solution["routes"]):
-        edgelist = []
-        for i in range(0, len(route) - 1):
-            edgelist.append((route[i], route[i + 1]))
-        print(colors[c])
-        graph.add_edges_from(edgelist, color=colors[c])
+    def get_length(route):
+        lenght = 0
+        for i in range(0, len(route)-1):
+            lenght += vrptw.distances[i][i+1]
 
-    return graph
+        return round(lenght, 2)
 
-def draw_solution_to_graph(graph, pos, solution):
+    def get_load(route):
+        load = 0
+        for customer in route:
+            load += vrptw.demands[customer]
 
-    colors = get_spaced_colors(len(solution["routes"]))
+        return load
 
-    for route in enumerate(solution["routes"]):
-        edgelist = []
-        for i in range(0, len(route) - 1):
-            edgelist.append((route[i], route[i+1]))
-
-        r = lambda: random.randint(0, 255)
-        color = '#%02X%02X%02X' % (r(),r(),r())
-
-        nx.draw_networkx_edges(G=graph, pos=pos, edgelist=edgelist, edge_color=color)
+    for i, route in enumerate(solution["routes"]):
+        load = get_load(route)
+        length = get_length(route)
+        if logging:
+            log("Trasa: {}\t Długość: {}\t Ładunek: {}\t{}\n".format(i + 1, length, load, route), filename)
+        else:
+            print("Trasa: {}\t Długość: {}\t Ładunek: {}\t{}".format(i+1, length, load, route))
 
 
-    return graph
+def restricted_float(x):
+    x = float(x)
+    if x < 0.0 or x > 1.0:
+        raise argparse.ArgumentTypeError("%r not in range [0.0, 1.0]"%(x,))
+    return x
+
+
+def restricted_int_0_10000(x):
+    x = float(x)
+    if x < 0.0 or x > 10000:
+        raise argparse.ArgumentTypeError("{} not in range [0, 10000]".format(x))
+    return int(x)
+
+
+def restricted_int_5_10000(x):
+    x = float(x)
+    if x < 5 or x > 10000:
+        raise argparse.ArgumentTypeError("{} not in range [5, 10000]".format(x))
+    return int(x)
+
+
+def restricted_file(x):
+    if not os.path.exists(x):
+        raise argparse.ArgumentError("File {} not found".format(x))
+    return str(x)
+
+
+def log(string, filename):
+    if os.path.exists(filename):
+        file = open(filename, "a")
+    else:
+        file = open(filename, "w+")
+
+    file.write(string)
+    file.close()
+
 
 if __name__ == '__main__':
 
-    print(sys.argv)
+    parser = argparse.ArgumentParser(
+        description='''Algorytm MACS-VRPTW''',
+        epilog='''Wykonał: Damian Tchoń'''
+    )
 
-    file = str(sys.argv[1])  # source file with model
+    parser.add_argument('file', help="Plik zawierający model danych problem VRPTW", type=restricted_file)
+    parser.add_argument('time', help="Długość działania algorytmu w sekundach", type=int)
+    parser.add_argument('m', help="[def=10] Parametr m - liczba mrówek w kolonii.", default=10, type=restricted_int_0_10000)
+    parser.add_argument('beta', help="[def=1] Parametr beta - im większy, tym większa istotność atrakcyjności n.", default=1, type=restricted_int_0_10000)
+    parser.add_argument('q0', help="[def=0.1] Parametr q0 - prawdopodobieństwo pseudolosowego wyboru scieżki.", default=0.1, type=restricted_float)
+    parser.add_argument('p', help="[def=0.9] Parametr p - szybkość odparowywania feromonu.", default=0.9, type=restricted_float)
 
-    work_time = int(sys.argv[2])  # algorithtm working time
+    args = parser.parse_args()
 
-    log("Started working on {} solution.\n".format(str(file)))
+    file = args.file  # source file with model
 
-    data = Data(str(file))
+    work_time = int(args.time)  # algorithtm working time
+
+    f = ("solutions/SOLUTION_" + datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S'))
+
+    # log("Started working on {} solution.\n".format(str(file)), f)
+
+    data = ParsedData(str(file))
 
     vrptw = VRPTW(data, vehicle_capacity=200)
 
@@ -91,14 +126,18 @@ if __name__ == '__main__':
     demands = nx.get_node_attributes(vrptw.graph, 'demands')
     time_windows = nx.get_node_attributes(vrptw.graph, 'time_windows')
 
-    macs = MACS_VRPTW(vrptw, tau0=None, m=10, beta=1, q0=0.9, p=0.1)
+    macs = MACS_VRPTW(vrptw, tau0=None, m=args.m, beta=args.beta, q0=args.q0, p=args.p)
 
-    print(macs.vrptw.distances)
+    print('Rozpoczęto pracę nad "{}"'.format(args.file))
+    print('Paramtery algorytmu: m={}, beta={}, q0={}, p={}'.format(args.m, args.beta, args.q0, args.p))
 
-    best_solution = nearest_neighbors_vrptw(vrptw)
+    best_solution = nearest_neighbors_vrptw(vrptw=vrptw, v=None)
 
     start_time = time.time()
     stop_time = start_time + work_time
+
+    print('Przewidywany czas zakończenia:', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(stop_time)))
+    print('...')
 
     p_vei = None
     p_time = None
@@ -133,15 +172,15 @@ if __name__ == '__main__':
                     got_new_solution = True
 
             if new_best_solution:
-                log("NEW_BEST_SOLUTION OF {} (Working time: {} at {})".format(file, str(time.time() - start_time),
-                                                                              str(time.asctime())))
-                log(str(new_best_solution) + "\n")
+                # log("NEW_BEST_SOLUTION OF {} (Working time: {} at {})\n".format(file, str(time.time() - start_time),
+                #                                                               str(time.asctime())), f)
+                # log(str(new_best_solution) + "\n", f)
                 if new_best_solution["vehicles"] < v:
 
                     os.kill(p_vei.pid, signal.SIGTERM)
-                    print("SIGTERM to VEI {} sent".format(p_vei.pid))
+                    # print(str(time.time() - start_time), "SIGTERM to VEI {} sent".format(p_vei.pid))
                     os.kill(p_time.pid, signal.SIGTERM)
-                    print("SIGTERM to TIME {} sent".format(p_time.pid))
+                    # print(str(time.time() - start_time), "SIGTERM to TIME {} sent".format(p_time.pid))
                     p_vei.join()
                     p_time.join()
                     best_solution = new_best_solution
@@ -151,24 +190,20 @@ if __name__ == '__main__':
                     best_solution = new_best_solution
 
     os.kill(p_vei.pid, signal.SIGTERM)
-    print("SIGTERM to VEI {} sent".format(p_vei.pid))
     os.kill(p_time.pid, signal.SIGTERM)
-    print("SIGTERM to TIME {} sent".format(p_time.pid))
 
-    print(best_solution)
+    print('Zakończono pracę nad "{}"'.format(args.file))
 
-    nx.draw_networkx(vrptw.graph, pos=pos, nodelist=vrptw.get_depo_ids(), with_labels=True, node_color='r',
-                     node_size=300, font_color='k', font_size=8)
-    nx.draw_networkx(vrptw.graph, pos=pos, nodelist=vrptw.get_clients_ids(), with_labels=True, node_color='k',
-                     node_size=100, font_color='white', font_size=8)
+    print("Użyte pojazdy:  {}".format(best_solution["vehicles"]))
+    print("Łączna długość: {}".format(best_solution["length"]))
+    print("Trasy:")
+    describe_solution(best_solution, logging=False, filename=f)
+    print('\nWyniki zapisano w pliku "{}"'.format(f))
 
-    add_solution_to_graph(vrptw.graph, best_solution)
 
-    edges = vrptw.graph.edges()
-    colors = [vrptw.graph[u][v]['color'] for u, v in edges]
+    log('Paramtery algorytmu: m={}, beta={}, q0={}, p={}\n\n'.format(args.m, args.beta, args.q0, args.p), f)
+    log("Użyte pojazdy:  {}\n".format(best_solution["vehicles"]), f)
+    log("Łączna długość: {}\n".format(best_solution["length"]), f)
+    log("Trasy:\n", f)
+    describe_solution(best_solution, logging=True, filename=f)
 
-    nx.draw_networkx_edges(vrptw.graph, pos=pos, edges=edges, edge_color=colors)
-
-    plt.show()
-
-    # plt.savefig("result.png", bbox_inches='tight')

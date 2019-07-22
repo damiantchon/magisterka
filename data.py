@@ -6,8 +6,85 @@ from random import choice
 from services.calculate import euclidean_distance
 
 
-class VRPTW:
+class ParsedData:
+    """Klasa zweierające 'surowe' dane na temat problemu VRPTW"""
 
+    def __init__(self, input_file_name):
+
+        self.size = None
+        self.ids = []
+        self.ids_data = []
+        self.coordinates = []
+        self.demands = []
+        self.time_windows = []
+        self.service_times = []
+
+        self.parse_raw_data_model(input_file_name)
+
+    def __str__(self):
+
+        return_me = ""
+
+        return_me += "Size: " + str(self.size) + "\n"
+        return_me += "IDs: " + str(self.ids) + "\n"
+        return_me += "Coordinates: " + str(self.coordinates) + "\n"
+        return_me += "Demands: " + str(self.demands) + "\n"
+        return_me += "Time Windows: " + str(self.time_windows) + "\n"
+        return_me += "Service Times " + str(self.service_times) + "\n"
+
+        return return_me
+
+    def parse_raw_data_model(self, raw_input_file):
+
+        def get_raw_data():
+            return_me = []
+            with open(raw_input_file, "r") as fin:
+
+                fin.readline()
+
+                for line in fin:
+                    if not line.strip().startswith("#"):
+                        line = re.sub(r'\s+', ' ', line).strip() + "\n"
+
+                        splited = list(map(float, line.split()))
+                        return_me.append(splited)
+
+            return return_me
+
+        raw_data = get_raw_data()
+        for i in range(0, len(raw_data)):
+            self.size = len(raw_data)
+
+            self.ids_data.append(raw_data[i][0])
+
+            self.ids.append(i)
+
+            self.coordinates.append((raw_data[i][1], raw_data[i][2]))
+
+            self.demands.append(int(raw_data[i][3]))
+
+            self.time_windows.append((raw_data[i][4], raw_data[i][5]))
+
+            self.service_times.append(raw_data[i][6])
+
+    def get_node_data(self, num):
+
+        if self.ids[num] is not None:
+
+            data = {}
+            data["id"] = self.ids[num]
+            data["coordinates"] = self.coordinates[num]
+            data["demand"] = self.demands[num]
+            data["time_window"] = self.time_windows[num]
+            data["service_times"] = self.service_times[num]
+
+            return data
+
+        else:
+            return None
+
+class VRPTW:
+    """Klasa zawierająca podstawowy model VRPTW"""
     def __init__(self, data, vehicle_capacity):
 
         # From data
@@ -52,9 +129,8 @@ class VRPTW:
     def get_depo_ids(self):
         return [self.ids[0]]
 
-
-
 class VRPTW_MACS_DS:
+    """Klasa zawierająca model problemu VRPTW dla algorytmu MACS-VRPTW"""
     def __init__(self, vrptw, v):
 
         self.v = v
@@ -73,8 +149,6 @@ class VRPTW_MACS_DS:
 
         for i in range(vrptw.size, self.size):
             self.depo_ids.append(i)
-
-        print(self.depo_ids)
 
         self.coordinates = vrptw.coordinates.copy()
         self.demands = vrptw.demands.copy()
@@ -125,85 +199,3 @@ class VRPTW_MACS_DS:
 
     def get_random_depo(self):
         return choice(self.depo_ids)
-
-
-class Data:
-
-    def __init__(self, input_file_name):
-
-        self.size = None
-        self.ids = []
-        self.ids_data = []
-        self.coordinates = []
-        self.demands = []
-        self.time_windows = []
-        self.service_times = []
-
-        self.setup_data_model(input_file_name, "temp.txt")
-
-    def __str__(self):
-
-        return_me = ""
-
-        return_me += "Size: " + str(self.size) + "\n"
-        return_me += "IDs: " + str(self.ids) + "\n"
-        return_me += "Coordinates: " + str(self.coordinates) + "\n"
-        return_me += "Demands: " + str(self.demands) + "\n"
-        return_me += "Time Windows: " + str(self.time_windows) + "\n"
-        return_me += "Service Times " + str(self.service_times) + "\n"
-
-        return return_me
-
-    def setup_data_model(self, raw_input_file, output_file_path):
-
-        def get_raw_data():
-
-            with open(raw_input_file, "r") as fin, open(output_file_path, "w+") as fout:
-                fin.readline()
-
-                for line in fin:
-                    if not line.strip().startswith("#"):
-                        fout.write(re.sub(r'\s+', ' ', line).strip() + "\n")
-
-            return_me = []
-
-            with open(output_file_path, "r") as fin:
-                for line in fin:
-                    splited = list(map(float, line.split()))
-                    return_me.append(splited)
-
-                return return_me
-
-        raw_data = get_raw_data()
-
-        for i in range(0, len(raw_data)):
-
-            self.size = len(raw_data)
-
-            self.ids_data.append(raw_data[i][0])
-
-            self.ids.append(i)
-
-            self.coordinates.append((raw_data[i][1], raw_data[i][2]))
-
-            self.demands.append(int(raw_data[i][3]))
-
-            self.time_windows.append((raw_data[i][4], raw_data[i][5]))
-
-            self.service_times.append(raw_data[i][6])
-
-    def get_node_data(self, num):
-
-        if self.ids[num] is not None:
-
-            data = {}
-            data["id"] = self.ids[num]
-            data["coordinates"] = self.coordinates[num]
-            data["demand"] = self.demands[num]
-            data["time_window"] = self.time_windows[num]
-            data["service_times"] = self.service_times[num]
-
-            return data
-
-        else:
-            return None

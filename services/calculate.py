@@ -1,32 +1,39 @@
 from scipy.spatial import distance
+from statistics import mean, stdev
 import random
-import copy
+
 
 def manhattan_distance(x, y):
     return sum(abs(a-b) for a,b in zip(x,y))
 
 
 def euclidean_distance(x, y):
-    return distance.euclidean(x, y)  #round(distance.euclidean(x, y), 2)
+    return distance.euclidean(x, y)
 
 
-def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojdę
+def nearest_neighbors_vrptw(vrptw, v):
 
-    to_visit = []
+    nodes_to_visit = []
 
     # prepeare "to_visit"
     for i in range(1, vrptw.size):
-        to_visit.append(vrptw.ids[i])
+        nodes_to_visit.append(vrptw.ids[i])
 
     routes = []
+
     total_lenght = 0
 
     depo = 0
 
     vehicles_count = 0
 
+    if v is None:
+        vehicles_avaliable = True
+    else:
+        vehicles_avaliable = (vehicles_count < v)
+
     # main loop
-    while to_visit:
+    while nodes_to_visit and vehicles_avaliable:
 
         vehicles_count = vehicles_count + 1
 
@@ -47,7 +54,7 @@ def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojd�
             fesible = []
             closest_fesible = {}
 
-            for city in to_visit:
+            for city in nodes_to_visit:
                 distance = vrptw.distances[current_city][city]
                 if time + distance <= vrptw.time_windows[city][1] \
                         and max(time + distance, vrptw.time_windows[city][0]) + vrptw.service_times[city] + vrptw.distances[city][depo] <= vrptw.time_windows[depo][1]\
@@ -65,7 +72,7 @@ def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojd�
             # Dodajemy closest i zdejmujemy z listy to_visit
             current_route.append(closest_fesible["city"])
             if closest_fesible["city"] != depo:
-                to_visit.remove(closest_fesible["city"])
+                nodes_to_visit.remove(closest_fesible["city"])
             route_length += closest_fesible["length"]
 
             # Przesuwamy pojazd do następnego miasta i ustalamy czas po obsłudze
@@ -79,82 +86,10 @@ def nearest_neighbors_vrptw(vrptw): # greedy greedy - tylko sprawdzane czy dojd�
 
         routes.append(current_route)
 
-    solution = {"length": total_lenght, "vehicles": vehicles_count, "routes": routes}
-
-    return solution
-
-
-def nearest_neighbors_vrptw_vei(vrptw, v): # greedy greedy - tylko sprawdzane czy dojdę
-
-    to_visit = []
-
-
-    # prepeare "to_visit"
-    for i in range(1, vrptw.size):
-        to_visit.append(vrptw.ids[i])
-
-    print("TO VISIT {}".format(to_visit))
-
-    routes = []
-    total_lenght = 0
-
-    depo = 0
-
-    vehicles_count = 0
-
-    # main loop
-    while to_visit and vehicles_count < v:
-
-        vehicles_count = vehicles_count + 1
-
-        load = 0
-
-        route_length = 0
-
-        time = 0
-
-        current_city = 0
-
-        current_route = [0]
-
-        done = False
-
-        while not done:
-
-            fesible = []
-            closest_fesible = {}
-
-            for city in to_visit:
-                distance = vrptw.distances[current_city][city]
-                if time + distance <= vrptw.time_windows[city][1] \
-                        and max(time + distance, vrptw.time_windows[city][0]) + vrptw.service_times[city] + vrptw.distances[city][depo] <= vrptw.time_windows[depo][1]\
-                        and load + vrptw.demands[city] <= vrptw.vehicle_capacity:
-                    # dojadę przed końcem okna czasowego i po obsłudze zdążę wrócić do depo
-
-                    fesible.append((city, distance))
-
-            if fesible:
-                closest_fesible["city"], closest_fesible["length"] = min(fesible, key=lambda f: f[1])
-            else:
-                closest_fesible["city"], closest_fesible["length"] = (0, vrptw.distances[current_city][depo])
-                done = True
-
-            # Dodajemy closest i zdejmujemy z listy to_visit
-            current_route.append(closest_fesible["city"])
-            if closest_fesible["city"] != depo:
-                to_visit.remove(closest_fesible["city"])
-            route_length += closest_fesible["length"]
-
-            # Przesuwamy pojazd do następnego miasta i ustalamy czas po obsłudze
-            current_city = closest_fesible["city"]
-            load = load + vrptw.demands[closest_fesible["city"]]
-
-            time = max(vrptw.time_windows[current_city][0] + vrptw.service_times[current_city],
-                       time + closest_fesible["length"] + vrptw.service_times[current_city])
-
-        total_lenght += route_length
-
-        routes.append(current_route)
+        if v is None:
+            vehicles_avaliable = True
+        else:
+            vehicles_avaliable = (vehicles_count < v)
 
     solution = {"length": total_lenght, "vehicles": vehicles_count, "routes": routes}
 
@@ -190,7 +125,7 @@ def check_feasibility_diagnositcs(vrptw, routes):
     return True
 
 
-def two_opt_feasibility(vrptw, route): #TODO zoptymalizować
+def two_opt_feasibility(vrptw, route):
 
     time = 0
     load = 0
@@ -263,10 +198,6 @@ def check_feasibility_prime(vrptw, route, Xi_Xpi, d_table): # Zoptymalizowana ve
         return False
 
     return True
-
-
-def ts(a, b):
-    return str(a) + " " + str(b)
 
 
 def check_feasibility_bis(vrptw, last_y2, d_table, edges, first, second):
@@ -382,6 +313,11 @@ def check_feasibility_bis_x(vrptw, edges, d_table, first, second):
 
 def update_auxiliary_table(vrptw, routes, t):
 
+    if t is None:
+        t = []
+
+        t = [[{} for i in range(0, vrptw.size)] for j in range(0, vrptw.size)]
+
     for route in routes:
         time_a = 0
         time_b = 0
@@ -448,7 +384,6 @@ def update_auxiliary_table(vrptw, routes, t):
             t[start][stop]["load_to_go_a"] = load_to_go_a
             t[start][stop]["load_to_go_b"] = load_to_go_b
 
-    # print(table)
     return t
 
 
@@ -531,8 +466,6 @@ def create_auxiliary_table(vrptw, routes):
             table[start][stop]["load_to_go_b"] = load_to_go_b
 
 
-
-    # print(table)
     return table
 
 
@@ -545,17 +478,17 @@ def routes_length(vrptw, routes):
     return round(length, 2) # int(length*(10**2))/(10.**2)
 
 
-def swap_2opt(route, i, k):
-    assert i >= 0 and i < (len(route) - 1)
-    assert k > i and k < len(route)
-    new_route = route[0:i]
-    new_route.extend(reversed(route[i:k + 1]))
-    new_route.extend(route[k+1:])
-    assert len(new_route) == len(route)
-    return new_route
-
-
 def run_2opt(vrptw, route):
+
+    def swap_2opt(route, i, k):
+        assert i >= 0 and i < (len(route) - 1)
+        assert k > i and k < len(route)
+        new_route = route[0:i]
+        new_route.extend(reversed(route[i:k + 1]))
+        new_route.extend(route[k + 1:])
+        assert len(new_route) == len(route)
+        return new_route
+
     improvement = True
     best_route = route
     best_distance = routes_length(vrptw, [route])
@@ -590,9 +523,9 @@ def calculate_center_of_mass(vrptw, solution):
     return center_of_mass
 
 
-def local_search_clean(vrptw, solution):
+def CROSS_exchange_LS(vrptw, solution):
 
-    def calculate_delta3(X1, X1p, X2, X2p, Y1, Y1p, Y2, Y2p) :
+    def calculate_delta(X1, X1p, X2, X2p, Y1, Y1p, Y2, Y2p) :
 
         dist = vrptw.distances
 
@@ -628,27 +561,6 @@ def local_search_clean(vrptw, solution):
         temp_r2 += route2[Y2pi:]
 
         return temp_r1, temp_r2
-
-    def prepeare_for_ls(vrptw, solutions, current):
-
-        solutions = copy.copy(solutions)
-        solutions = list(enumerate(solutions))
-        solutions = [x for x in solutions if x[1] is not current ]
-
-        current_CoM = calculate_center_of_mass(vrptw, current)
-
-        CoMs = []
-        for solution in solutions:
-            CoMs.append(calculate_center_of_mass(vrptw, solution[1]))
-
-        # print(list(enumerate(solutions)))
-
-        zipped = list(zip(solutions, CoMs))
-        sorted_zipped = sorted(zipped, key=lambda x: euclidean_distance(current_CoM, x[1]))
-        sorted_unzipped = (list(zip(*list(zip(*sorted_zipped))[0])))
-
-        return sorted_unzipped[0], sorted_unzipped[1]
-
 
     def local_search_single(first_route, second_route, d_table):
 
@@ -709,7 +621,7 @@ def local_search_clean(vrptw, solution):
                         # delta = calculate_delta2(X1_index, X2_index, Y1_index, Y2_index, r1=first_route,
                         #                          r2=second_route)
 
-                        delta = calculate_delta3(X1, X1p, X2, X2p, Y1, Y1p, Y2, Y2p)
+                        delta = calculate_delta(X1, X1p, X2, X2p, Y1, Y1p, Y2, Y2p)
 
 
                         if delta < best_X2:
@@ -755,65 +667,9 @@ def local_search_clean(vrptw, solution):
 
         return updated_solution
 
-
-    # basic
-    # departure_table = create_auxiliary_table(vrptw, solution["routes"])
-    #
-    # for i in range(0, len(solution["routes"])-1):
-    #     for j in range(i+1, len(solution["routes"])):
-    #         # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
-    #         if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
-    #             solution["routes"][i], solution["routes"][j], _ = \
-    #                 local_search_single(solution["routes"][i], solution["routes"][j], departure_table)
-    #             departure_table = update_auxiliary_table(vrptw, [solution["routes"][i], solution["routes"][j]], departure_table)
-
-
-    # Ze środkiem ciężkości
-    # for i in range(0, len(solution["routes"])-1):
-    #     if(solution["routes"][i] is not [0, 0]):
-    #         order, sol_sorted_by_CoM = prepeare_for_ls(vrptw, solution["routes"], solution["routes"][i])
-    #         for j in range(0, len(sol_sorted_by_CoM)):
-    #             # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
-    #             if  solution["routes"][j] is not [0, 0]:
-    #                 solution["routes"][i], solution["routes"][order[j]], _ = \
-    #                     local_search_single(solution["routes"][i], solution["routes"][order[j]], departure_table)
-    #                 departure_table = update_auxiliary_table(vrptw, [solution["routes"][i], solution["routes"][order[j]]], departure_table)
-
-
-    # Ze środkiem ciężkości + shuffle
-    # departure_table = create_auxiliary_table(vrptw, solution["routes"])
-    # shuffled_ids = list(range(len(solution["routes"]) - 1))
-    # random.shuffle(shuffled_ids)
-    # for i in shuffled_ids:
-    #     if(solution["routes"][i] is not [0, 0]):
-    #         order, sol_sorted_by_CoM = prepeare_for_ls(vrptw, solution["routes"], solution["routes"][i])
-    #         for j in range(0, len(sol_sorted_by_CoM)):
-    #             # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
-    #             if  solution["routes"][j] is not [0, 0]:
-    #                 solution["routes"][i], solution["routes"][order[j]], _ = \
-    #                     local_search_single(solution["routes"][i], solution["routes"][order[j]], departure_table)
-    #                 departure_table = update_auxiliary_table(vrptw, [solution["routes"][i], solution["routes"][order[j]]], departure_table)
-
-    # # proper
-    # departure_table = create_auxiliary_table(vrptw, solution["routes"])
-    # for i in range(0, len(solution["routes"])-1):
-    #     solutions = []
-    #     for j in range(i+1, len(solution["routes"])):
-    #         # departure_table = create_auxiliary_table(vrptw, solution["routes"])
-    #         # sprawdzenie czy któraś z optymalizowanych dróg nie jest już pusta
-    #         if solution["routes"][i] is not [0, 0] and solution["routes"][j] is not [0, 0]:
-    #             solutions.append((i, j, local_search_single(solution["routes"][i], solution["routes"][j], departure_table)))
-    #     # print(solutions)
-    #     best = min(solutions, key=lambda item: item[2][2])
-    #     # print(best)
-    #     solution["routes"][best[0]] = best[2][0]
-    #     solution["routes"][best[1]] = best[2][1]
-    #     departure_table = update_auxiliary_table(vrptw, [solution["routes"][best[0]], solution["routes"][best[1]]], departure_table)
-
-    # # proper + shuffle
     shuffled_ids = list(range(len(solution["routes"]) - 1))
     random.shuffle(shuffled_ids)
-    departure_table = create_auxiliary_table(vrptw, solution["routes"])
+    departure_table = update_auxiliary_table(vrptw, solution["routes"], None)
     for i in shuffled_ids:
         solutions = []
         for j in range(i+1, len(solution["routes"])):
@@ -831,6 +687,3 @@ def local_search_clean(vrptw, solution):
     # aktualizacja rozwiązania
     # print(update_solution(solution))
     return update_solution(solution)
-
-
-
