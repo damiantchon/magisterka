@@ -102,11 +102,12 @@ if __name__ == '__main__':
     )
 
     parser.add_argument('file', help="Plik zawierający model danych problem VRPTW", type=restricted_file)
+    parser.add_argument('capacity', help="Ładowność pojazdów podanego problemu VRPTW", type=restricted_int_0_10000)
     parser.add_argument('time', help="Długość działania algorytmu w sekundach", type=int)
-    parser.add_argument('m', help="[def=10] Parametr m - liczba mrówek w kolonii.", default=10, type=restricted_int_0_10000)
-    parser.add_argument('beta', help="[def=1] Parametr beta - im większy, tym większa istotność atrakcyjności n.", default=1, type=restricted_int_0_10000)
-    parser.add_argument('q0', help="[def=0.1] Parametr q0 - prawdopodobieństwo pseudolosowego wyboru scieżki.", default=0.1, type=restricted_float)
-    parser.add_argument('p', help="[def=0.9] Parametr p - szybkość odparowywania feromonu.", default=0.9, type=restricted_float)
+    parser.add_argument('m', help="Parametr m - liczba mrówek w kolonii [def=10]", default=10, type=restricted_int_0_10000)
+    parser.add_argument('beta', help="Parametr beta - im większy, tym większa istotność atrakcyjności n [def=1]", default=1, type=restricted_float)
+    parser.add_argument('q0', help="Parametr q0 - prawdopodobieństwo pseudolosowego wyboru scieżki [def=0.1]", default=0.1, type=restricted_float)
+    parser.add_argument('p', help="Parametr p - szybkość odparowywania feromonu [def=0.9]", default=0.9, type=restricted_float)
 
     args = parser.parse_args()
 
@@ -165,7 +166,8 @@ if __name__ == '__main__':
 
             while not got_new_solution and stop_time >= time.time():
                 try:
-                    new_best_solution = queue.get(timeout=0.1)
+                    queueue = queue.get(timeout=0.1)
+                    new_best_solution = queueue[0]
                 except Empty:
                     pass
                 if new_best_solution:

@@ -1,7 +1,11 @@
 Paramtery algorytmu: m=10, beta=1, q0=0.1, p=0.9
 
+Problem: /home/damian/PycharmProjects/Magisterka/solomon/C101
+Ładowność pojazdu: 200
+
 Użyte pojazdy:  10
-Łączna długość: 828.94
+Łączna długość trasy: 828.94
+
 Trasy:
 Trasa: 1	 Długość: 90.29	 Ładunek: 160	[0, 43, 42, 41, 40, 44, 46, 45, 48, 51, 50, 52, 49, 47, 0]
 Trasa: 2	 Długość: 80.29	 Ładunek: 180	[0, 5, 3, 7, 8, 10, 11, 9, 6, 4, 2, 1, 75, 0]

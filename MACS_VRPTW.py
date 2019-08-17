@@ -335,7 +335,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 if self.verbose:
                     print("CHECKING FEASIBILITY OF (len{})".format(self.count_customers(best_VEI_solution)), best_VEI_solution)
                 if check_solution_feasibility(self.vrptw, best_VEI_solution["routes"]):
-                    queue.put(best_VEI_solution)
+                    queue.put([best_VEI_solution, "ACS-VEI"])
                     if self.verbose:
                         print("FEASIBLE!")
             self.pheromones_VEI = self.update_pheromones(macs_ds, best_VEI_solution, self.pheromones_VEI, best_VEI_solution, IN=IN)
@@ -385,7 +385,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                         print("NEW_BEST_SOLUTION (TIME) (Working time: {} at {})".format(str(time.time() - start_time),
                                                                               str(time.asctime())))
 
-                    queue.put(best_TIME_solution)
+                    queue.put([best_TIME_solution, "ACS-TIME"])
                     vei_time_queue.put(best_TIME_solution)
 
 
