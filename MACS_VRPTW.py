@@ -277,16 +277,18 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         if local_search and feasible:
 
+            solution = self.cross_exchange(macs_ds, solution)
+
+        return solution
+
+    def cross_exchange(self, macs_ds, solution):
+        last_solution_length = solution["length"]
+        solution = CROSS_exchange_LS(macs_ds, solution)
+        while (last_solution_length > solution["length"]):
             last_solution_length = solution["length"]
-
             solution = CROSS_exchange_LS(macs_ds, solution)
-
-            while (last_solution_length > solution["length"]):
-                last_solution_length = solution["length"]
-                solution = CROSS_exchange_LS(macs_ds, solution)
-            if self.verbose:
-                print(os.getpid(), solution)
-
+        if self.verbose:
+            print(os.getpid(), solution)
         return solution
 
     def create_attractiveness_array(self, IN, current_location, current_time, feasible_cities, macs_ds):
@@ -303,7 +305,6 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
             attractiveness[current_location][city] = 1.0 / distance
         return attractiveness
 
-    # @profile(immediate=True)
     def ACS_VEI(self, v, best_solution, stop_time, queue, vei_time_queue):
         if self.verbose:
             print("ACS_VEI v =", v)
@@ -348,8 +349,6 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
                 pass
             self.pheromones_VEI = self.update_pheromones(macs_ds, best_solution, self.pheromones_VEI, best_solution, IN=IN)
 
-
-    # @profile(immediate=True)
     def ACS_TIME(self, v, best_solution, start_time, stop_time, queue, vei_time_queue):
 
         if self.verbose:
@@ -361,7 +360,7 @@ class MACS_VRPTW(): #Multiple Ant Colony System for Vehicle Routing Problems Wit
 
         while stop_time > time.time():
             if self.verbose:
-                print("BEST SOLUTION V: {}, LEN: {}".format(best_solution["vehicles"], best_solution["length"]))
+                print("BEST SOLUTION V: {}, LEN: {}181".format(best_solution["vehicles"], best_solution["length"]))
 
             kth_solutions = []
 

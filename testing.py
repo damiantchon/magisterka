@@ -136,14 +136,17 @@ if __name__ == '__main__':
     f_csv = ("logs_csv/LOG_CSV_" + datetime.datetime.now().strftime('%Y-%m-%d_%H_%M_%S'))
     f_csv_clean = ("logs_csv_clean/LOG_CSV_CLEAN_" + datetime.datetime.now().strftime('%Y-%m-%d_%H_%M_%S'))
 
-    solomon = "solomon/100/"
+    solomon = "solomon/50/"
 
-    file_sets.append((sorted([solomon+"R1/" + f for f in listdir(solomon+"R1") if isfile(join(solomon+"R1", f))]), 200))
-    file_sets.append((sorted([solomon+"R2/" + f for f in listdir(solomon+"R2") if isfile(join(solomon+"R2", f))]), 1000))
-    file_sets.append((sorted([solomon+"C1/" + f for f in listdir(solomon+"C1") if isfile(join(solomon+"C1", f))]), 200))
-    file_sets.append((sorted([solomon+"C2/" + f for f in listdir(solomon+"C2") if isfile(join(solomon+"C2", f))]), 700))
-    file_sets.append((sorted([solomon+"RC1/" + f for f in listdir(solomon+"RC1") if isfile(join(solomon+"RC1", f))]), 200))
-    file_sets.append((sorted([solomon+"RC2/" + f for f in listdir(solomon+"RC2") if isfile(join(solomon+"RC2", f))]), 1000))
+    hamberger = "hamberger/"
+
+    # file_sets.append((sorted([solomon+"R1/" + f for f in listdir(solomon+"R1") if isfile(join(solomon+"R1", f))]), 200))
+    # file_sets.append((sorted([solomon+"R2/" + f for f in listdir(solomon+"R2") if isfile(join(solomon+"R2", f))]), 1000))
+    # file_sets.append((sorted([solomon+"C1/" + f for f in listdir(solomon+"C1") if isfile(join(solomon+"C1", f))]), 200))
+    # file_sets.append((sorted([solomon+"C2/" + f for f in listdir(solomon+"C2") if isfile(join(solomon+"C2", f))]), 700))
+    # file_sets.append((sorted([solomon+"RC1/" + f for f in listdir(solomon+"RC1") if isfile(join(solomon+"RC1", f))]), 200))
+    # file_sets.append((sorted([solomon+"RC2/" + f for f in listdir(solomon+"RC2") if isfile(join(solomon+"RC2", f))]), 1000))
+    file_sets.append((sorted([hamberger + f for f in listdir(hamberger) if isfile(join(hamberger, f))]), 1000))
 
 
     print(file_sets)
@@ -165,137 +168,139 @@ if __name__ == '__main__':
     # file_sets[0][0].pop(1)
     # file_sets[0][0].pop(1)
     # file_sets[0][0].pop(1)
-
+    # file_sets[0][0].pop(1)
+    #
     # print("After POP:", file_sets)
 
-    m = 10
-    beta = 1
-    Q = [0.90]
+    BETAS = [1, 1]
+    Q = [0.9]
     P = [0.1]
-    check_best = True
-    single_instance_woking_time = 1800
+    M = [10]
+    check_best = False
+    single_instance_woking_time = 3600
 
     log_csv(["Instance", "Series Name", "q0", "p", "Time", "Vehicles", "Lenght", "Colony"], f_csv)
     log_csv_clean(["Instance", "Series Name", "q0", "p", "Time", "Vehicles", "Lenght", "Colony"], f_csv_clean)
+    for m in M:
+        for beta in BETAS:
+            for p in P:
 
-    for p in P:
+                for q0 in Q:
 
-        for q0 in Q:
+                    for set in file_sets:
 
-            for set in file_sets:
+                        for file in set[0]:
 
-                for file in set[0]:
+                            check_times = [60, 120, 240, 360, 480, 600, 720, 840, 960, 1080, 1200, 1320, 1440, 1560, 1680, 1800, 1920, 2040, 2160, 2280, 2400, 2520, 2640, 2760, 2880, 3000, 3120, 3240, 3360,3480,3600]
+                            last_solution = []
 
-                    check_times = [60, 120, 240, 360, 480, 600, 720, 840, 960, 1080, 1200, 1320, 1440, 1560, 1680, 1800]
-                    last_solution = []
+                            log("Started working on {} solution.\n".format(file), f)
 
-                    log("Started working on {} solution.\n".format(file), f)
+                            data = ParsedData(file)
+                            print(data)
+                            vrptw = VRPTW(data, vehicle_capacity=set[1])
 
-                    data = ParsedData(file)
-                    print(data)
-                    vrptw = VRPTW(data, vehicle_capacity=set[1])
+                            pos = nx.get_node_attributes(vrptw.graph, 'coordinates')
+                            demands = nx.get_node_attributes(vrptw.graph, 'demands')
+                            time_windows = nx.get_node_attributes(vrptw.graph, 'time_windows')
 
-                    pos = nx.get_node_attributes(vrptw.graph, 'coordinates')
-                    demands = nx.get_node_attributes(vrptw.graph, 'demands')
-                    time_windows = nx.get_node_attributes(vrptw.graph, 'time_windows')
+                            macs = MACS_VRPTW(vrptw, tau0=None, m=m, beta=beta, q0=q0, p=p, verbose=True)
 
-                    macs = MACS_VRPTW(vrptw, tau0=None, m=m, beta=beta, q0=q0, p=p, verbose=True)
+                            print(macs.vrptw.distances)
 
-                    print(macs.vrptw.distances)
+                            best_solution = nearest_neighbors_vrptw(vrptw=vrptw, v=None)
 
-                    best_solution = nearest_neighbors_vrptw(vrptw=vrptw, v=None)
+                            work_time = single_instance_woking_time # algorithtm working time
+                            start_time = time.time()
+                            stop_time = start_time + work_time
 
-                    work_time = single_instance_woking_time # algorithtm working time
-                    start_time = time.time()
-                    stop_time = start_time + work_time
+                            while stop_time >= time.time():
 
-                    while stop_time >= time.time():
+                                v = best_solution["vehicles"]
 
-                        v = best_solution["vehicles"]
+                                queue = mp.Queue()
+                                vei_time_queue = mp.Queue()
 
-                        queue = mp.Queue()
-                        vei_time_queue = mp.Queue()
+                                p_vei = mp.Process(target=macs.ACS_VEI, args=(v, best_solution, stop_time, queue, vei_time_queue))
+                                p_time = mp.Process(target=macs.ACS_TIME, args=(v+1, best_solution, start_time, stop_time, queue, vei_time_queue))
 
-                        p_vei = mp.Process(target=macs.ACS_VEI, args=(v, best_solution, stop_time, queue, vei_time_queue))
-                        p_time = mp.Process(target=macs.ACS_TIME, args=(v+1, best_solution, start_time, stop_time, queue, vei_time_queue))
+                                p_vei.start()
+                                p_time.start()
 
-                        p_vei.start()
-                        p_time.start()
+                                solution_with_fewer_vehicles_found = False
 
-                        solution_with_fewer_vehicles_found = False
+                                while stop_time >= time.time() and not solution_with_fewer_vehicles_found:
 
-                        while stop_time >= time.time() and not solution_with_fewer_vehicles_found:
+                                    new_best_solution = None
+                                    got_new_solution = False
+                                    colony = ''
+                                    while not got_new_solution and stop_time >= time.time():
+                                        try:
+                                            queueue = queue.get(timeout=0.1)
+                                            new_best_solution = queueue[0]
+                                            colony = queueue[1]
+                                        except Empty:
+                                            pass
+                                        if new_best_solution:
+                                            got_new_solution = True
 
-                            new_best_solution = None
-                            got_new_solution = False
-                            colony = ''
-                            while not got_new_solution and stop_time >= time.time():
-                                try:
-                                    queueue = queue.get(timeout=0.1)
-                                    new_best_solution = queueue[0]
-                                    colony = queueue[1]
-                                except Empty:
-                                    pass
-                                if new_best_solution:
-                                    got_new_solution = True
+                                    if new_best_solution:
+                                        working_time = str(int(time.time() - start_time))
+                                        new_veh = str(new_best_solution["vehicles"])
+                                        new_time = str(new_best_solution["length"])
 
-                            if new_best_solution:
-                                working_time = str(int(time.time() - start_time))
-                                new_veh = str(new_best_solution["vehicles"])
-                                new_time = str(new_best_solution["length"])
+                                        log("{} (Working time: {} at {})\n".format(file, working_time, str(time.asctime())), f)
 
-                                log("{} (Working time: {} at {})\n".format(file, working_time, str(time.asctime())), f)
+                                        log("V:{}, L:{}\n".format(new_veh, new_time), f)
 
-                                log("V:{}, L:{}\n".format(new_veh, new_time), f)
+                                        log_csv([file, "q0={} p={}".format(q0, p), q0, p, working_time, new_veh, new_time, colony], f_csv)
 
-                                log_csv([file, "q0={} p={}".format(q0, p), q0, p, working_time, new_veh, new_time, colony], f_csv)
-
-                                if last_solution:
-                                    while int(working_time) > check_times[0]:
-                                        log_csv_clean([file, "q0={} p={}".format(q0, p), q0, p, check_times[0], last_solution[1], last_solution[2], last_solution[3]], f_csv_clean)
-                                        check_times.pop(0)
-
-
-                                last_solution = [working_time, new_veh, new_time, colony]
+                                        if last_solution:
+                                            while int(working_time) > check_times[0]:
+                                                log_csv_clean([file, "q0={} p={}".format(q0, p), q0, p, check_times[0], last_solution[1], last_solution[2], last_solution[3]], f_csv_clean)
+                                                check_times.pop(0)
 
 
-
-                                if new_best_solution["vehicles"] < v:
-
-                                    os.kill(p_vei.pid, signal.SIGTERM)
-                                    os.kill(p_time.pid, signal.SIGTERM)
-                                    p_vei.join()
-                                    p_time.join()
-                                    best_solution = new_best_solution
-                                    solution_with_fewer_vehicles_found = True
-
-                                else:
-                                    best_solution = new_best_solution
+                                        last_solution = [working_time, new_veh, new_time, colony]
 
 
-                                if check_best:
-                                    if new_best_solution["length"] == best_len_to_date[file]:
-                                        if (p_vei.is_alive()):
+
+                                        if new_best_solution["vehicles"] < v:
+
                                             os.kill(p_vei.pid, signal.SIGTERM)
-                                        if (p_time.is_alive()):
                                             os.kill(p_time.pid, signal.SIGTERM)
-                                        p_vei.join()
-                                        p_time.join()
-                                        print("Im here!")
-                                        stop_time = 0
+                                            p_vei.join()
+                                            p_time.join()
+                                            best_solution = new_best_solution
+                                            solution_with_fewer_vehicles_found = True
 
-                    while check_times:
+                                        else:
+                                            best_solution = new_best_solution
 
-                        log_csv_clean(
-                            [file, "q0={} p={}".format(q0, p), q0, p, check_times[0], last_solution[1], last_solution[2], last_solution[3]],
-                            f_csv_clean)
 
-                        check_times.pop(0)
+                                        if check_best:
+                                            if new_best_solution["length"] == best_len_to_date[file]:
+                                                if (p_vei.is_alive()):
+                                                    os.kill(p_vei.pid, signal.SIGTERM)
+                                                if (p_time.is_alive()):
+                                                    os.kill(p_time.pid, signal.SIGTERM)
+                                                p_vei.join()
+                                                p_time.join()
+                                                print("Im here!")
+                                                stop_time = 0
 
-                    log("{} || ***FINAL SOLUTION***\n".format(file), f)
-                    log(str(best_solution) + "\n", f)
-                    log_csv(["-", "-", "-", "-", "-", "-", "-", "-"], f_csv)
-                    log_csv_clean(["-", "-", "-", "-", "-", "-", "-", "-"], f_csv_clean)
+                            while check_times:
+
+                                log_csv_clean(
+                                    [file, "q0={} p={}".format(q0, p), q0, p, check_times[0], last_solution[1], last_solution[2], last_solution[3]],
+                                    f_csv_clean)
+
+                                check_times.pop(0)
+
+                            log("{} || ***FINAL SOLUTION***\n".format(file), f)
+                            log(str(best_solution) + "\n", f)
+                            log_csv(["-", "-", "-", "-", "-", "-", "-", "-"], f_csv)
+                            log_csv_clean(["-", "-", "-", "-", "-", "-", "-", "-"], f_csv_clean)
 
 
 

@@ -52,9 +52,9 @@ def describe_solution(solution, logging=False, filename=None):
         load = get_load(route)
         length = get_length(route)
         if logging:
-            log("Trasa: {}\t Długość: {}\t Ładunek: {}\t{}\n".format(i + 1, length, load, route), filename)
+            log("Cykl: {}\t Długość: {}\t Ładunek: {}\t{}\n".format(i + 1, length, load, route), filename)
         else:
-            print("Trasa: {}\t Długość: {}\t Ładunek: {}\t{}".format(i+1, length, load, route))
+            print("Cykl: {}\t Długość: {}\t Ładunek: {}\t{}".format(i+1, length, load, route))
 
 
 def restricted_float(x):
@@ -63,11 +63,22 @@ def restricted_float(x):
         raise argparse.ArgumentTypeError("%r not in range [0.0, 1.0]"%(x,))
     return x
 
+def restricted_float_10000(x):
+    x = float(x)
+    if x < 0.0 or x > 10000.0:
+        raise argparse.ArgumentTypeError("%r not in range [0.0, 10000.0]"%(x,))
+    return x
 
 def restricted_int_0_10000(x):
     x = float(x)
-    if x < 0.0 or x > 10000:
-        raise argparse.ArgumentTypeError("{} not in range [0, 10000]".format(x))
+    if x < 0.0 or x > 100000:
+        raise argparse.ArgumentTypeError("{} not in range [0, 100000]".format(x))
+    return int(x)
+
+def restricted_int_1_10000(x):
+    x = float(x)
+    if x < 0.0 or x > 100000:
+        raise argparse.ArgumentTypeError("{} not in range [1, 100000]".format(x))
     return int(x)
 
 
@@ -104,8 +115,8 @@ if __name__ == '__main__':
     parser.add_argument('file', help="Plik zawierający model danych problem VRPTW", type=restricted_file)
     parser.add_argument('capacity', help="Ładowność pojazdów podanego problemu VRPTW", type=restricted_int_0_10000)
     parser.add_argument('time', help="Długość działania algorytmu w sekundach", type=int)
-    parser.add_argument('m', help="Parametr m - liczba mrówek w kolonii [def=10]", default=10, type=restricted_int_0_10000)
-    parser.add_argument('beta', help="Parametr beta - im większy, tym większa istotność atrakcyjności n [def=1]", default=1, type=restricted_float)
+    parser.add_argument('m', help="Parametr m - liczba mrówek w kolonii [def=10]", default=10, type=restricted_int_1_10000)
+    parser.add_argument('beta', help="Parametr beta - im większy, tym większa istotność atrakcyjności n [def=1]", default=1, type=restricted_float_10000)
     parser.add_argument('q0', help="Parametr q0 - prawdopodobieństwo pseudolosowego wyboru scieżki [def=0.1]", default=0.1, type=restricted_float)
     parser.add_argument('p', help="Parametr p - szybkość odparowywania feromonu [def=0.9]", default=0.9, type=restricted_float)
 
@@ -204,8 +215,12 @@ if __name__ == '__main__':
 
 
     log('Paramtery algorytmu: m={}, beta={}, q0={}, p={}\n\n'.format(args.m, args.beta, args.q0, args.p), f)
+
+    log("Problem: {}\n".format(args.file), f)
+    log("Ładowność pojazdu: {}\n\n".format(args.capacity), f)
+
     log("Użyte pojazdy:  {}\n".format(best_solution["vehicles"]), f)
     log("Łączna długość: {}\n".format(best_solution["length"]), f)
-    log("Trasy:\n", f)
+    log("\nTrasy:\n", f)
     describe_solution(best_solution, logging=True, filename=f)
 
